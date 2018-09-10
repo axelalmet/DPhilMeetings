@@ -1,0 +1,45 @@
+---
+title: "Curvature Relaxation in the Crypt"
+author: "Axel Almet"
+date: "2 June 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+Following observations from Tan et al. (2013) and personal communications with other laboratories on organoid culturing protocols, it has transpired that crypts isolated from the stroma maintain their shape, rather than snapping back to a flat, 'base state'. This suggests that there is a curvature remodelling present within the crypt, akin to plastic deformation. Here, we explore the effect of incorporating such a mechanism.x
+
+# Current model
+As it currently stands, our model takes the form
+
+\begin{align}
+&x' = \alpha\gamma\cos\theta, \qquad y' = \alpha\gamma\sin\theta,\\
+&F' = k\frac{\sigma}{\Delta}(x - S_0), \qquad G' = k\frac{\sigma}{\Delta}y,\\
+&m' = \alpha\gamma(F\sin\theta - G\cos\theta).
+\end{align}
+
+The foundation stress $\sigma$ follows a Maxwell relationship with regards to the strain $\Delta = \left((x - S_0)^2 + y^2\right)^{\frac{1}{2}}$:
+
+$$ \frac{\partial}{\partial t}(\sigma - \Delta) + \eta_\nu\Delta = 0, $$
+while the bending moment $m$ is assumed to depend linearly on curvature, with a static, zero intrinsic curvature:
+
+$$ m = E_b\gamma^{-1}\theta'.$$
+
+For boundary conditions, we clamp the rod at both ends:
+
+$$
+x(0) = 0, \quad x(L_0) = L_0, \qquad y(0) = y(L_0) = y_0, \qquad \theta(0) = \theta(L_0) = 0.
+$$
+
+### Curvature remodelling
+We introduce curvature remodelling by allowing the intrinsic curvature to relax to the growth curvature, which scales with the bending moment. Mathematically, this is described by
+
+$$ m = E_b(\kappa_G - \widehat{\kappa}_G), \quad \mbox{ where }\quad  \frac{\partial \widehat{\kappa}_G}{\partial t} = \eta_\kappa(\kappa_G - \widehat{\kappa}_G). $$
+In our model, this takes the form of 
+
+$$ m = E_b(\gamma^{-1}\theta' - \widehat{\kappa}_G), \quad \mbox{ where }\quad  \frac{\partial \widehat{\kappa}_G}{\partial t} = \eta_\kappa(\gamma^{-1}\theta' - \widehat{\kappa}_G). $$
+
+Computationally, we can discretise the above relation with a Forward Euler scheme and update the intrinsic curvature $\widehat{\kappa}_G$  at each time step.

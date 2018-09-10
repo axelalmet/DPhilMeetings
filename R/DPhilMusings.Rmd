@@ -1,0 +1,224 @@
+---
+title: "Thoughts Related to DPhil"
+author: "Axel Almet"
+date: "17 March 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(R.matlab)
+library(latex2exp)
+library(RColorBrewer)
+
+```
+This is essentially a repository of thoughts and ideas that are related to the DPhil, but have not been put into any formal writing, i.e. publication, but definitely should be recorded for potential future use. This should have been started a LONG time ago, but better late than never. 
+
+The following entries are written in chronological order and have been dated according to the approximate time they were discussed say, during a supervisor meeting, or otherwise.
+
+## 08/03/18 Synthesis of the basement membrane during division
+
+## 09/03/18 Self-contact during post-buckling 
+One thing that should be noted is that during all of these time-dependent simulations, particularly when growth is purely biochemical and is not subject to any mechanical inhibition, is that we stop simulations not because the system has entered any sort of steady state, but because running the simulation further in time will break the planarity assumption. For example, in the plot below, we have
+
+$$ \frac{\dot{\gamma}}{\gamma} = \eta W(S_0), \qquad \mbox{ where }\qquad W(S_0) = \exp\left({-\frac{\left(S_0 - 0.5L_0\right)^2}{\sigma^2}}\right), \quad \sigma = 0.1L_0.$$
+The resulting evolution is
+
+```{r plot crypt, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(1, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+Increasing time (and hence $\gamma$) further results in the rod crossing over itself, breaking planarity. This occurs because the model is parametrised in terms of the initial arc length $S_0$, which doesn't 'see' planarity, so to speak. This in itself isn't an issue, but one suspects this is a contributing factor to the lack of sensitivity towards dynamic perturbations to material properties. For example, if we increase $\sigma = 0.5L_0$ discontinuously:
+
+```{r mutant crypt, echo=FALSE}
+
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext"
+mutantValues = "k_0p02_L0_0p125_sigma0p1L_mutant_0p5L_area1_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+
+# Load the mutant sols
+mutantSolsList <- readMat(paste(directory, "sols_", mutantValues, ".mat", sep=""))
+# Load the times
+mutantTimesList <- readMat(paste(directory, "times_", mutantValues, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+numMutantSols <- length(mutantSolsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+
+# Add the "base solution" 
+baseSol <- solsList[[1]][[numSols - 1]][[1]]
+
+solDataFrame <- data.frame(S=baseSol[2,], x=baseSol[3,], y=baseSol[4,], nX=baseSol[5,], nY=baseSol[6,], theta=baseSol[7,], m=baseSol[8,])
+solDataFrame$time = toString(1)
+solData <- rbind(solData, solDataFrame)
+
+# Plot solutions
+for ( i in seq(1, numMutantSols - 1, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- mutantSolsList[[1]][[i]][[1]]
+  currentTime = mutantTimesList[[1]][[i]]
+
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(i + 1)
+  solData <- rbind(solData, solDataFrame)
+
+
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numMutantSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+Not much has changed, and we can't go further before self-contact occurs. 
+
+This self-contact phenomenon has occured in other similar models, e.g. in the seashell models (see Chirat et al., 2013). According to Derek, there's a couple of ways around this. One is to impose that there is no self-contact by incorporating this no-contact condition into the energy of the system. Another is to consider the solution on the half-interval $x \in [0, 0.5L_0]$, where we envisage the right boundary condition as a sliding along a rigid wall with which the rod makes contact. Finally, another solution may be to model the underlying foundation to be less resistant to invaginations than protrusion, consequently rendering it nonlinear.
+
+All of these solutions should produce a crypt length that matches what is seen _in vivo_. Moreover, live-imaging of crypts (Langlands et al., 2016) shows that the lumen is actually rather narrow---almost crease-like. However, these changes are phenomenological, rather than motivated by any sort of biological observation, and so we should exhaust what can be done with this current model before implementing any further changes.
+
+## 09/03/18 Periodicity---necessary or no?
+Often, we've asked ourselves whether the clamped boundary conditions, given by
+$$ x(0) = 0, \quad x(L_0) = L_0, \quad y(0) = y(L_0) = 0, \quad \theta(0) = \theta(L_0) = 0.$$
+
+are really appropriate. The alternate boundary conditions that are mentioned, to model the effect of neighbouring crypts and villi, are periodic boundary conditions:
+
+$$ x(0) = 0, \quad x(L_0) = L_0, \quad y(0) = y(L_0), \quad \theta(0) = \theta(L_0).$$
+This is equivalent to imposing that $y(x) = y_e(x)$, where $y_e$ denotes the even extension of the centreline curve $(x,y)$. However, observe that the clamped solutions are a subset of the periodic solutions (I think any solution where the left and right boundary values match satisfy this). Therefore, we should theoretically be able to generate all periodic solutions by translating the clamped solutions in the vertical directions. This may need some extra justifying, but it allows us to do away with the need to alter the model to satisfy periodicity.
+
+## 09/03/18 Mode-jumping without growth
+
+Consider purely biochemical growth, but now with a gradient of foundation stiffness
+
+$$ k(S_0) = \widehat{k}_0\exp\left({-\frac{\left(S_0 - 0.5L_0\right)^2}{\sigma_k^2}}\right) + \widehat{k}_1, $$
+where ${k}_1$ is a translation factor such that such that $\int^{L_0}_0k(S_0)dS_0 = k_0$, where $k_0$ is the homogeneous foundation stiffness. That is, $\widehat{k}_1$ is chosen such that there is no `net' change in foundation stiffness.
+
+In previous investigations of the effect of $\sigma_k$, we found that as you increased $\sigma_k$, you increased the buckling mode:
+
+Here is the solution for $\sigma_k = 0.1L_0$:
+
+```{r plot variable translated foundation, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_variablecentredfoundation_area1"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+Increasing to $\sigma_k = 0.3L_0$ appears to increase the buckling mode.
+
+```{r plot variable translated foundation 3sigma, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_variablecentredfoundation_3sigma"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+The resulting temporal evolution splits the original crypt base. Moreover, we know from our weakly nonlinear analysis that increasing the foundation stiffness results in a higher buckling mode. This presents an interesting biological hypothesis: changes to the underlying ECM distribution---either an increase in net stiffness or widening of distribution---could result in a biomechanical change akin to crypt fission.
+
+
+## 09/03/18 Mechanical non-growth-contributions of cell division 

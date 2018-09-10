@@ -1,0 +1,44 @@
+---
+title: "Self-Contact of an Inextensible, Elastic Ring"
+author: "Axel Almet"
+date: "24 July 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(cowplot)
+library(R.matlab)
+library(latex2exp)
+library(RColorBrewer)
+library(ggpubr)
+library(plotly)
+```
+
+## Introduction
+Here we reproduce the results, specifically, Figure 1 from Flaherty et al. (1972), in which an inextensible, elastic rid is subjected to an external pressure $p$, and subsequently buckles. In particular, we reproduce the post-buckling behaviour that transitions the ring from a buckled state, to a buckled solution with self-contact at a point, to self-contact along a region.
+
+Let the position of the ring be given by $(x(s), y(s))$. Denote the tangential and normal resultant force components by $Q$ and $N$, respectively. Given the symmetry and periodicity of the ring, we need only consider the ring on the interval $0 \le s \le \pi/n$ for the $n^{th}$ mode. For simplicity, we only consider the system for $n = 2$. Let $\theta(s)$ denote the angle of the tangent vector $\mathbf{d}_3$, and $k(s)$ denote the current curvature of the ring. The equations to be solved are:
+\begin{align}
+&x' = \cos\theta,\\
+&y' = \sin\theta,\\
+&Q' + kN = 0,\\
+&N' - kQ - p = 0,\\
+&k' - N = 0.
+\end{align}
+In the absence of self-contact, the boundary conditions are
+$$
+x(0) = 0, \quad y(0) = 0, \quad N(0) = 0, \quad \theta(0) = 0,\quad  N\left(\frac{\pi}{2}\right) = 0, \quad \theta\left(\frac{\pi}{2}\right) = \frac{\pi}{2}.
+$$
+
+For self-contact at a point, note that for $n = 2$, the contact point coincides with the endpoint. The self-contact conditions are modified as thus:
+$$
+x(0) = 0, \quad y(0) = 0, \quad N(0) = 0, \quad \theta(0) = 0,\quad  x\left(\frac{\pi}{2}\right) = 0, \quad \theta\left(\frac{\pi}{2}\right) = \frac{\pi}{2}.
+$$
+
+
+For self-contact along a region, we now require that the ring is flat along the self-contact region. That is, we require the curvature to be zero:
+$$
+x(0) = 0, \quad y(0) = 0, \quad N(0) = 0, \quad \theta(0) = 0,\quad  x\left(s_c\right) = 0, \quad \theta\left(s_c\right) = \frac{\pi}{2}, \quad k(s_c) = 0.
+$$

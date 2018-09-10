@@ -1,0 +1,63 @@
+---
+title: "Investigating Growth Laws"
+author: "Axel Almet"
+date: "5 September 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(cowplot)
+library(R.matlab)
+library(latex2exp)
+library(RColorBrewer)
+library(ggpubr)
+library(plotly)
+```
+
+# Set-up
+We model the crypt as a planar, growing, inextensible elastic rod attached to an underlying foundation, whose attachments remodel over time. Tissue growth is encapsulated by the growth stretch $\gamma$, modelling a local increase of the initial arc length $S_0$; that is, 
+\begin{align}
+\gamma = \frac{\partial s}{\partial S_0}.
+\end{align}
+The equations describing geometric constraints and balance of linear and angular momentum are given by:
+\begin{align}
+&x' = \gamma\cos\theta,\\
+&y' = \gamma\sin\theta,\\
+&n_x' = \gamma k(x - p_x), \qquad\mbox{ where }\qquad \dot{p}_x = \eta(x - p_x),\\
+&n_y' + \gamma k(y - p_y), \qquad\mbox{ where } \qquad\dot{p}_y = \eta(y - p_y),\\
+&\theta' = E_b\gamma m,\\
+&m' = \gamma(n_x\sin\theta - n_y\cos\theta).
+\end{align}
+For simplicity, we assume the rod is clamped horizontally at the boundaries:
+\begin{align}
+x(0) = 0, \qquad x(L_0) = 0, \qquad y(0) = y(L_0) =  y_0, \qquad \theta(0) = \theta(L_0) = 0.
+\end{align}
+
+The parameter $L_0$ is the initial rod length, giving the horizontal interval of deformation for the crypt.
+
+# Contributions to growth
+A generalised evolution equation for $\gamma$ takes the form
+\begin{align}
+\frac{\dot{\gamma}}{\gamma} = H(s, S_0, W, n_1, n_3, \sigma, \Delta, \cdots), 
+\end{align}
+where $H$ can depend on various quantities, such as position ($S_0$ or $s$), chemical signals ($W$), stresses ($n_1$, $n_3$, $\sigma$), strains ($\Delta$) etc. Here, we discuss possible contributions to include in our growth law. 
+
+### Chemical signalling (Wnt)
+Perhaps the fundamental driver of proliferation and hence tissue growth in the intestinal epithelium is Wnt signalling. 
+
+\begin{align}
+\frac{\dot{\gamma}}{\gamma} = W(s),
+\end{align}
+where $W(s)$ denotes the non-dimensional profile of Wnt signalling, assumed to be in steady-state. Note that we parametrise the signal with respect to the current arclength parameter $s$, to signify that the chemical profile is observable and is not an 'inherent' property of the cells.
+
+### Mechanosensitivity
+
+\begin{align}
+\frac{\dot{\gamma}}{\gamma} = \mu(\sigma^* - \sigma),
+\end{align}
+
+\begin{align}
+\frac{\dot{\gamma}}{\gamma} = \mu(n_3 - n_3^*),
+\end{align}

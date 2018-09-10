@@ -1,0 +1,267 @@
+---
+title: "Investigating Perturbations to Wnt Gradient"
+author: "Axel Almet"
+date: "6 March 2018"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(R.matlab)
+library(latex2exp)
+library(RColorBrewer)
+```
+## From the Literature
+
+According to Sansom et al. (2004), loss of the Wnt-regulating APC gene disrupts the Wnt gradient, affecting proliferation, migration, and the pattern of differentiation on a short time scale (five days). Moreover, Park et al. (1998) established that loss of the APC gene results in disregulation of crypt fission. Therefore, we will test whether or not dynamically manipulating the Wnt gradient is enough to disrupt an established crypt shape.
+
+## Set-up 
+We consider purely biochemical growth of the form
+
+$$ \frac{\dot{\gamma}}{\gamma} = \eta W(S_0), $$
+where $W(S_0)$ represents the distribution of a chemical signal (Wnt) and is given by
+
+$$ W(S_0) = \exp\left({-\frac{\left(S_0 - 0.5L_0\right)^2}{\sigma^2}}\right). $$
+
+The growth rate parameter $\eta$ is set to $\eta =  (\int^{L_0}_0W(S_0)dS_0)^{-1}$ for all values of $\sigma$, so as to maintain a fixed 'amount' of Wnt in the system. We explore the effect of dynamically increasing $\sigma$ once a crypt shape has been established. The rod is assumed to be inextensible for all cases.
+
+We first set $\sigma = 0.1L_0$, which results in a reasonable crypt shape.
+
+```{r plot crypt, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(1, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+For reference, this is what the shape would look like if we had set $\sigma = 0.5L_0$.
+
+```{r plot crypt wideer growth, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p5L_area1_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(1, numSols - 1, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+## Results
+
+With the crypt shape, we now set $\sigma = 0.5L_0$ and let the rod grow again.
+```{r mutant crypt, echo=FALSE}
+
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext"
+mutantValues = "k_0p02_L0_0p125_sigma0p1L_mutant_0p5L_area1_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+
+# Load the mutant sols
+mutantSolsList <- readMat(paste(directory, "sols_", mutantValues, ".mat", sep=""))
+# Load the times
+mutantTimesList <- readMat(paste(directory, "times_", mutantValues, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+numMutantSols <- length(mutantSolsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+
+# Add the "base solution" 
+baseSol <- solsList[[1]][[numSols - 1]][[1]]
+
+solDataFrame <- data.frame(S=baseSol[2,], x=baseSol[3,], y=baseSol[4,], nX=baseSol[5,], nY=baseSol[6,], theta=baseSol[7,], m=baseSol[8,])
+solDataFrame$time = toString(1)
+solData <- rbind(solData, solDataFrame)
+
+# Plot solutions
+for ( i in seq(1, numMutantSols - 1, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- mutantSolsList[[1]][[i]][[1]]
+  currentTime = mutantTimesList[[1]][[i]]
+
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(i + 1)
+  solData <- rbind(solData, solDataFrame)
+
+
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numMutantSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+Increasing $\sigma$ does not seem to distort the shape as much as we had hoped. Part of this can be explained by looking at the profile of $\gamma$ after we have altered $\sigma$, revealing that while we have increased the width of the $W(S_0)$, growth itself does not change that much.
+
+```{r mutant gamma, echo=FALSE}
+# Load the growth profiles
+gammaList <- readMat(paste(directory, "gamma_", values, ".mat", sep=""))
+
+# Load the growth profiles
+mutantGammaList <- readMat(paste(directory, "gamma_", mutantValues, ".mat", sep=""))
+
+numSols <- length(gammaList[[1]])
+numMutantSols <- length(mutantSolsList[[1]])
+gammaData <- NULL # Create data frame for growth profiles
+
+# Some parameters
+solCount <- 1
+
+# Add the "base solution" 
+baseGammaProfile <- gammaList[[1]][[numSols - 1]][[1]]
+
+solDataFrame <- data.frame(S=baseSol[2,], x=baseSol[3,], y=baseSol[4,], nX=baseSol[5,], nY=baseSol[6,], theta=baseSol[7,], m=baseSol[8,])
+solDataFrame$time = toString(1)
+solData <- rbind(solData, solDataFrame)
+
+gammaDataFrame <- data.frame(S=baseGammaProfile[1,], gamma=baseGammaProfile[2,])
+gammaDataFrame$time = toString(1)
+gammaData <-rbind(gammaData, gammaDataFrame)
+
+# Plot solutions
+for ( i in seq(1, numMutantSols - 1, by=solCount) )
+{
+  # Extract the solution, growth and time
+  gammaProfile <- mutantGammaList[[1]][[i]][[1]]
+
+  gammaDataFrame <- data.frame(S=gammaProfile[1,], gamma=gammaProfile[2,])
+  gammaDataFrame$time = toString(i + 1)
+  gammaData <-rbind(gammaData, gammaDataFrame)
+
+}
+
+gammaPlot <- ggplot(gammaData) + geom_path(aes(S, gamma, colour=time), size=1.0) + 
+              ylab(TeX('$\\gamma$')) + xlab(TeX('$S_0$')) + 
+              theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+              scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numMutantSols)) +
+              scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+gammaPlot
+```
+
+Even if we increase the amount of Wnt, by setting $\eta = 7\left(\int^{L_0}_0W(S_0)dS_0\right)^{-1}$, we see negligible change:
+```{r mutant crypt increased, echo=FALSE}
+
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext"
+mutantValues = "k_0p02_L0_0p125_sigma0p1L_mutant_0p5L_area7_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+
+# Load the mutant sols
+mutantSolsList <- readMat(paste(directory, "sols_", mutantValues, ".mat", sep=""))
+# Load the times
+mutantTimesList <- readMat(paste(directory, "times_", mutantValues, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+numMutantSols <- length(mutantSolsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+
+# Add the "base solution" 
+baseSol <- solsList[[1]][[numSols - 1]][[1]]
+
+solDataFrame <- data.frame(S=baseSol[2,], x=baseSol[3,], y=baseSol[4,], nX=baseSol[5,], nY=baseSol[6,], theta=baseSol[7,], m=baseSol[8,])
+solDataFrame$time = toString(1)
+solData <- rbind(solData, solDataFrame)
+
+# Plot solutions
+for ( i in seq(1, numMutantSols - 1, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- mutantSolsList[[1]][[i]][[1]]
+  currentTime = mutantTimesList[[1]][[i]]
+
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(i + 1)
+  solData <- rbind(solData, solDataFrame)
+
+
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numMutantSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+## Conclusions
+This suggests that there are other subcellular and cellular that are necessary to distort the tissue shape. Indeed, in Sansom et al. (2004), the authors note, 
+
+> Changes were also observed in the extracellular matrix proteins, including laminin $\alpha 1$ and $\alpha 2$, laminin $\gamma 2$, tenascin and perlacan (Supplementary Fig. 2). These findings indicate that loss of APC in the epithelium also has an immediate effect on the surrounding mesenchyme'.

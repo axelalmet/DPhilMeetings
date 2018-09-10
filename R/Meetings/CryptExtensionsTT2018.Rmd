@@ -1,0 +1,913 @@
+---
+title: "Towards a Morphoelastic Crypt"
+author: "Axel Almet"
+date: "5 April 2018"
+output:
+    pdf_document:
+    fig_width: 5
+    fig_height: 3.33
+geometry: margin=1in
+---
+
+```{r setup , include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(cowplot)
+library(R.matlab)
+library(latex2exp)
+library(RColorBrewer)
+```
+
+# Current model
+
+To remind us, the model in its current form is described by the following equations for kinematics and mechanics:
+
+\begin{align}
+&x' = \alpha\gamma\cos\theta, \qquad y' = \alpha\gamma\sin\theta,\\
+&F' = k(x - S_0), \qquad G' = ky,\\
+&m' = \alpha\gamma(F\sin\theta - G\cos\theta).
+\end{align}
+
+These equations are supplemented by two constituve relations for bending and stretching, respectively:
+
+$$
+m = E_b\gamma^{-1}\theta', \qquad \alpha = 1 + E_s^{-1}(F\cos\theta + G\sin\theta).
+$$
+
+For computational simplicity, we have assumed that the rod is inextensible, equivalent to imposing $\alpha \equiv 1$.
+The rod is assumed to be clamped at both ends:
+
+$$
+x(0) = 0, \quad x(L_0) = L_0, \qquad y(0) = y(L_0) = 0, \qquad \theta(0) = \theta(L_0) = 0.
+$$
+At the moment, we have been considering growth due to a chemical signal profile, assumed to be in a steady state:
+
+$$ \frac{\dot{\gamma}}{\gamma} = \eta W(S_0). $$
+
+# Results so far
+Currently, in the model, we have three material parameters: growth, foundation stiffness, and rod stiffness. From the literature, there have been a number of suggested gradients for these different material properties. The following section summarises the investigations we have carried out, exploring the effects of incorporating heterogeneities, the forms of which have been suggested by literature results.
+
+### Investigating Wnt gradients
+
+According to Sansom et al. (2004), loss of the Wnt-regulating APC gene disrupts the Wnt gradient, affecting proliferation, migration, and the pattern of differentiation on a short time scale (five days). Moreover, Park et al. (1998) established that loss of the APC gene results in disregulation of crypt fission. Therefore, we will test whether or not dynamically manipulating the Wnt gradient is enough to disrupt an established crypt shape.
+
+The chemical signal profile (Wnt) is given by
+
+$$ W(S_0) = \exp\left({-\frac{\left(S_0 - 0.5L_0\right)^2}{\sigma^2}}\right). $$
+
+The growth rate parameter $\eta$ is set to $\eta =  (\int^{L_0}_0W(S_0)dS_0)^{-1}$ for all values of $\sigma$, so as to maintain a fixed 'amount' of Wnt in the system. We explore the effect of dynamically increasing $\sigma$ once a crypt shape has been established. The rod is assumed to be inextensible for all cases.
+
+We first set $\sigma = 0.1L_0$, which results in a reasonable crypt shape.
+
+```{r plot crypt, echo=FALSE, fig.align="center"}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(1, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+For reference, this is what the shape would look like if we had set $\sigma = 0.5L_0$.
+
+```{r plot crypt wider growth, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p5L_area1_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(1, numSols - 1, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+#### Results
+
+With the crypt shape, we now set $\sigma = 0.5L_0$ and let the rod grow again.
+
+```{r mutant crypt, fig.align="center", echo=FALSE}
+
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext"
+mutantValues = "k_0p02_L0_0p125_sigma0p1L_mutant_0p5L_area1_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+
+# Load the mutant sols
+mutantSolsList <- readMat(paste(directory, "sols_", mutantValues, ".mat", sep=""))
+# Load the times
+mutantTimesList <- readMat(paste(directory, "times_", mutantValues, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+numMutantSols <- length(mutantSolsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+
+# Add the "base solution" 
+baseSol <- solsList[[1]][[numSols - 1]][[1]]
+
+solDataFrame <- data.frame(S=baseSol[2,], x=baseSol[3,], y=baseSol[4,], nX=baseSol[5,], nY=baseSol[6,], theta=baseSol[7,], m=baseSol[8,])
+solDataFrame$time = toString(1)
+solData <- rbind(solData, solDataFrame)
+
+# Plot solutions
+for ( i in seq(1, numMutantSols - 1, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- mutantSolsList[[1]][[i]][[1]]
+  currentTime = mutantTimesList[[1]][[i]]
+
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(i + 1)
+  solData <- rbind(solData, solDataFrame)
+
+
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numMutantSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+Increasing $\sigma$ does not seem to distort the shape as much as we had hoped. Part of this can be explained by looking at the profile of $\gamma$ after we have altered $\sigma$, revealing that while we have increased the width of the $W(S_0)$, growth itself does not change that much.
+
+```{r mutant gamma, fig.align="center", echo=FALSE}
+# Load the growth profiles
+gammaList <- readMat(paste(directory, "gamma_", values, ".mat", sep=""))
+
+# Load the growth profiles
+mutantGammaList <- readMat(paste(directory, "gamma_", mutantValues, ".mat", sep=""))
+
+numSols <- length(gammaList[[1]])
+numMutantSols <- length(mutantSolsList[[1]])
+gammaData <- NULL # Create data frame for growth profiles
+
+# Some parameters
+solCount <- 1
+
+# Add the "base solution" 
+baseGammaProfile <- gammaList[[1]][[numSols - 1]][[1]]
+
+solDataFrame <- data.frame(S=baseSol[2,], x=baseSol[3,], y=baseSol[4,], nX=baseSol[5,], nY=baseSol[6,], theta=baseSol[7,], m=baseSol[8,])
+solDataFrame$time = toString(1)
+solData <- rbind(solData, solDataFrame)
+
+gammaDataFrame <- data.frame(S=baseGammaProfile[1,], gamma=baseGammaProfile[2,])
+gammaDataFrame$time = toString(1)
+gammaData <-rbind(gammaData, gammaDataFrame)
+
+# Plot solutions
+for ( i in seq(1, numMutantSols - 1, by=solCount) )
+{
+  # Extract the solution, growth and time
+  gammaProfile <- mutantGammaList[[1]][[i]][[1]]
+
+  gammaDataFrame <- data.frame(S=gammaProfile[1,], gamma=gammaProfile[2,])
+  gammaDataFrame$time = toString(i + 1)
+  gammaData <-rbind(gammaData, gammaDataFrame)
+
+}
+
+gammaPlot <- ggplot(gammaData) + geom_path(aes(S, gamma, colour=time), size=1.0) + 
+              ylab(TeX('$\\gamma$')) + xlab(TeX('$S_0$')) + 
+              theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+              scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numMutantSols)) +
+              scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+gammaPlot
+```
+
+Even if we increase the amount of Wnt, by setting $\eta = 7\left(\int^{L_0}_0W(S_0)dS_0\right)^{-1}$, we see negligible change:
+```{r mutant crypt increased, fig.align="center", echo=FALSE}
+
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext"
+mutantValues = "k_0p02_L0_0p125_sigma0p1L_mutant_0p5L_area7_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+
+# Load the mutant sols
+mutantSolsList <- readMat(paste(directory, "sols_", mutantValues, ".mat", sep=""))
+# Load the times
+mutantTimesList <- readMat(paste(directory, "times_", mutantValues, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+numMutantSols <- length(mutantSolsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+
+# Add the "base solution" 
+baseSol <- solsList[[1]][[numSols - 1]][[1]]
+
+solDataFrame <- data.frame(S=baseSol[2,], x=baseSol[3,], y=baseSol[4,], nX=baseSol[5,], nY=baseSol[6,], theta=baseSol[7,], m=baseSol[8,])
+solDataFrame$time = toString(1)
+solData <- rbind(solData, solDataFrame)
+
+# Plot solutions
+for ( i in seq(1, numMutantSols - 1, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- mutantSolsList[[1]][[i]][[1]]
+  currentTime = mutantTimesList[[1]][[i]]
+
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(i + 1)
+  solData <- rbind(solData, solDataFrame)
+
+
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numMutantSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+This suggests that there are other subcellular and cellular that are necessary to distort the tissue shape. Indeed, in Sansom et al. (2004), the authors note, 
+
+> Changes were also observed in the extracellular matrix proteins, including laminin $\alpha 1$ and $\alpha 2$, laminin $\gamma 2$, tenascin and perlacan (Supplementary Fig. 2). These findings indicate that loss of APC in the epithelium also has an immediate effect on the surrounding mesenchyme'.
+
+### Investigating foundation stiffness gradients
+Recently, Gjorevski et al. (2016) examined the effect of varying the biomechanical properties of matrices on organoid growth. The authors noted that stem cell growth is enhanced in stiffer matrices, while softer matrices promote stem cell differentiation. Contrastingly, DiMarco et al. (2015) claim that increased organoid formation is attained by _decreasing_ matrix stiffness, while simultaneously increasing cell adhesivity (implied to be cell-substrate).
+
+The results of Gjorevski et al. (2016) suggest a gradient for extracellular matrix stiffness in the crypt, which is modelled by our foundation stiffness parameter $k$. We test the effect of assuming such a gradient on crypt morphology.
+
+We once again have
+
+$$ W(S_0) = \exp\left({-\frac{\left(S_0 - 0.5L_0\right)^2}{\sigma^2}}\right). $$
+
+In the case of a static foundation, we consider 
+
+$$ k(S_0) = \widehat{k}_0\exp\left({-\frac{\left(S_0 - 0.5L_0\right)^2}{\sigma_k^2}}\right) + \widehat{k}_1, $$
+where ${k}_1$ is a translation factor such that such that $\int^{L_0}_0k(S_0)dS_0 = \widehat{k}_0$.
+
+The amplitude factor $\widehat{k}_0$ is defined such that $\int^{L_0}_0k(S_0)dS_0 = k_0$, i.e. the homogeneous foundation stiffness. We do this to ensure that the 'net' foundation stiffness does not change, ensuring proper comparison between the homogeneous and heterogeneous cases. This form ensures$k(0.5L_0) > \widehat{k}_0$ and $0 < k(0) = k(L_0) < \widehat{k}_0$:
+
+#### Results
+
+We set $\sigma_k = \sigma = 0.1$, modelling a direct correlation between the biochemical signal and ECM stiffness.
+
+The resultant evolution is:
+
+```{r plot variable translated foundation, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_variablecentredfoundation_area1"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+We see that introducing heterogeneity within the foundation stiffness results in increased growth around the top of the crypt, due to the decrease in stiffness. Thus, embedding a foundation stiffness in this way does little to alleviate the growth about the edges of the crypt collar---even exacerbating it---and does little to contribute to the characteristic bulge shape reminiscent of a crypt. However, it should be said that these protrusions do resemble the villi somewhat.
+
+In this case, the crypt is much more elongated, and the protrusions at the crypt edges are far less pronounced. We note that these results do not really change if you allow the foundation stiffness to dynamically evolve from homogeneity.
+
+#### Altering the width of the stiffness gradient
+As we ramp up $\sigma_k$, we start to see changes to the rod shape. For $\sigma_k = 0.3L_0$:
+
+```{r plot variable translated foundation 3sigma, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_variablecentredfoundation_3sigma"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+This "fissioning" shape suggests that it may be possible to induce a change akin to fission by dynamically changing the width of the stiffness gradient. Unfortunately, when we let the rod grow with $\sigma_k = 0.1L_0$,  and then set $\sigma_k = 0.5L_0$, then the rod shape doesn't too much.
+
+```{r plot foundation change 5sigma, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_foundationgradientchange_5sigma"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(1, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+The results seem to show that increasing the foundation stiffness of the stem cell region relative to the differentated zones does not enhance the growth of the crypt bud. This is not surprising, given what we understand from the post-buckling analysis of the original morphorods model. However, this heterogeneity in foundation stiffness may help to explain the formation of the villi, as the more compliant ECM may allow these cells to be pushed out and increase their surface area. However, these simulations suggest that a dynamically-updating foundation has similar effects to a static, already-heterogeneous foundation.
+
+One of the more interesting takeaway points from this investigation is that it is possible to alter the buckling mode by changing the foundation stiffness gradient. In fact, further investigations showed that one can even do this in a homogeneous setting: increasing the foundation stiffness $\widehat{k}$ for an inextensible rod with fixed growth results in an increase in buckling mode. This suggests possible mechanisms to initiate crypt fission via extracellular matrix changes, something that, to my knowledge,  hasn't been investigated in the past.
+
+### Investigating Young's modulus gradients
+The rod stiffness modulates the rod's ability to both bend and stretch, as specified by the two respective constitutive relations
+
+$$
+\qquad m = E_b\gamma^{-1}\theta', \qquad \alpha = 1 + E_s^{-1}(F\cos\theta + G\sin\theta).
+$$
+In the homogeneous case, $E_b = E_s = E$. In the inextensible case, $\alpha \equiv 1$, and so the stretching stiffness $E_s$ has no effect on the post-buckling evolution. Therefore, we will currently focus on the effect of $E_b$. This parameter can possible represent two biological processes: cell-cell adhesion---although $E_s$ is perhaps more appropriate for this---and the rigidity of the ECM through the basement membrane.
+
+We currently have two biological observations which present two opposing ways to impose a mechanical gradient in the crypt:
+
+1) It was observed in Pin et al. (2015) that differentiated Paneth cells are about four times stiffer than stem cells. Moreover, in Mahoney et al. (2008), it was shown that laminin $\alpha 5$ was expressed along the villi but not in the crypt, and that loss of laminin $\alpha 5$ resulted in a loss of villi architecture. This suggests that as an approximation, the rod is softer in the middle, where there is most growth. Therefore, an appropriate form for $E_b$ could be
+
+$$ E_b(S_0) = 1 - b\exp\left({-\frac{\left(S_0 - 0.5L_0\right)^2}{\sigma_E^2}}\right). $$
+ This is the same heterogeneous Young's Modulus used in Chirat et al. (2013).
+ 
+Alternatively,
+ 
+2) In other papers (Weiser et al. 1990; Benoit et al. 2009), it has been shown that some forms of laminin and integrins, which regulate both cell-cell and cell-substrate adhesion, decrease along the crypt-villus axis. This makes sense, as differentiated cells shed more frequently into the lumen and thus need to be less adhesive.
+
+This suggests that $E_b$ should correlate approximately with growth. A possible form is:
+
+$$ E_b(S_0) = (1 - b) + b\exp\left({-\frac{\left(S_0 - 0.5L_0\right)^2}{\sigma_E^2}}\right). $$
+We will explore the effect of these two different forms on the time evolution of the buckling crypt.
+ We assume that the rod is inextensible for all exxamined cases.
+
+#### Results
+We plot the effects of altering the variation in rod stiffness through the parameter $b$.
+
+##### Hypothesis 1
+We first consider the effect of modelling 'proliferative' cells to be softer than 'differented' cells. As a first step, we set $\sigma_E = \sigma$, signifying a direct correlation between the Young's Modulus and growth. For $b = 0.1$, we do not see much of a change from the homogeneously-stiff rod.
+
+```{r plot youngs decreasing b 0p1, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_youngsdecreasinggradient_b0p1_sigma"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+However, as we begin to increase $b$, we see that the structure of the crypt becomes more narrow. For $b = 0.9$, we have
+
+```{r plot youngs decreasing b 0p9, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_youngsdecreasinggradient_b0p9_sigma"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+Therefore, this type of rod stiffness heterogeneity, where the stem cell pool (growth highest) is softer than the differentiated compartment (growth lowest), results in a more narrow crypt structure. This is the same as what was observed in Chirat et al. (2013).
+
+#### Hypothesis 2
+We now consider the morphological effect of modelling a greater rod stiffness where growth is largest, due to the greater abundance of laminin or integrins, say. For $b = 0.1$, we do not see much of a difference.
+
+```{r plot youngs increasing b 0p1, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_youngsincreasinggradient_b0p1_sigma"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+Nor for $b = 0.6$, really.
+
+```{r plot youngs increasing b 0p6, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_youngsincreasinggradient_b0p6_sigma"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+However, as we begin to increase $b$ further, the buckling mode increases. For $b = 0.7$, 
+
+```{r plot youngs increasing b 0p7, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_youngsincreasinggradient_b0p7_sigma"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+For $b = 0.8$, the mode increases further.
+
+```{r plot youngs increasing b 0p8, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_youngsincreasinggradient_b0p8_sigma"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+Therefore, increasing the variation in stiffness in this manner results in a disruption of the expected crypt shape (from the flat state). This is similar to increasing the width of the foundation stiffness gradient $k(S_0)$. Interestingly, increasing $\sigma_E$ and $\sigma$ simultaneously also increases the buckling mode. 
+
+##### Conclusions
+
+We have investigated two possible gradients of rod stiffness for a morphoelastic rod model of the intestinal crypt. Based on the results shown above, it seems more appropriate to model the rod as mechanically softer in regions of higher growth (much like Chirat et al. (2013)). This results in a narrower invagination, much like what is witnessed _in vivo_---see Langlands et al. (2016) for relevant imaging of crypts. With an appropriate spatial form established, it remains to see the effect of these different gradients combined.
+
+### Combining it all together
+
+For reference, this is what a crypt looks like when we combine all three heterogeneities, with $\sigma = \sigma_k = \sigma_E = 0.1L_0$:
+
+```{r plot crypt combined gradients, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext_combinedgradients_b0p9_sigma"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+#### Discussions
+
+Effectively, the results of these investigations suggest that in the case of biochemically-driven growth, mechanisms akin to fission must occur due to dynamical changes in mechanical properties of the rod, be it from within the rod itself ($E_b$) or from the underlying substrate ($k$). However, one suspects that for the model in its current iteration, dynamically changing either of these properties is not enough to disrupt an established crypt shape. At the moment, there are perhaps two main reasons for this. The first, and main one is that there is no mechanical feedback towards growth, so dynamically changing mechanical properties does not really disrupt the behaviour of $\gamma$. The second is that by the time a crypt shape has been established, any further growth results in violation of the planarity assumption.
+
+# Future directions
+
+### A growth law for the crypt
+#### Mechanical feedback
+So far, we have modelled growth to be influenced solely by a biochemical signal, Wnt. We have shown that a specified Wnt gradient is enough to induce a crypt-like shape, provided the gaussian used to model the Wnt profile is of a suitable width. However, as there is no mechanical feedback on the growth stretch $\gamma(S_0, t)$, any dynamical changes we introduce do not affect the established crypt shape in a significant manner. 
+
+Therefore the most logical next step is to introduce mechanical feedback on growth. This could come in a variety of possible mechanisms, each of which would be arguably appropriate:
+
+1. _Crowding:_ it is known from the literature that tension tends to stimulate celll proliferation, while excessive compression inhibits proliferation (contact inhibition). Therefore, an appropriate growth law accounting for the intra-monolayer forces is:
+
+$$ 
+\frac{\dot{\gamma}}{\gamma} = \mu(n_T - n_T^*), \quad \mbox{ where } \quad n_T = F\cos\theta + G\sin\theta.
+$$
+We note the dependence on _axial_ force, representing the effect stresses within the epithelium only.
+
+Preliminary simulations with $\gamma$ coupled to both biochemical signalling and this mechanical inhibition, 
+
+$$ \frac{\dot{\gamma}}{\gamma} = \eta W(S_0) + \mu(n_T - n_T^*), $$
+including mechanical inhibition allows simulations to evolve to a natural steady state. This is because the rod will only grow when the net change in growth $\int^{L_0}_0\dot{\gamma} dS_0 > 0$; specifying $n^*_T \ge 0$ provides a way of the dampening growth at later times, particularly for higher vlaues of $\mu$. However, the crypt morphology is driven primarily by the profile of $W(S_0)$, for the heterogeneities within $n_T$ are not large enough to disrupt the biochemical signal profile.
+
+2. _Feedback from the underlying stroma:_ it is becoming clearer and clearer in the literature (see, for example, Koch, 2017) that the underlying mesenchyme has a role to play in growth. Sometimes this serves as a redundancy in the absence of niche-contributing epithelial cells (Davis et al., 2015; Stzepourginski et al., 2017), and sometimes this comes into play during pathological situations, such as injury (Miyoshi et al., 2012).
+
+The effect of the stroma is incorporated into the force balance equations for the horizontal and vertical force, $F$ and $G$ respectively. The growth law for crowding is dependent on the axial force within the rod, which indirectly accounts for the foundation. However, it may not be completely appropriate for the "external" effects induced by the underlying foundation. One possible law could be:
+
+$$ 
+\frac{\dot{\gamma}}{\gamma} = \mu(n_N^* - n_N), \quad \mbox{ where } \quad n_N = F\sin\theta + G\cos\theta.
+$$
+
+This law represents growth being inhibited in regions where the force from the underlying stroma is stronger.
+
+3. _Strain-dependent growth:_ Something with which some have toyed around in the literature is the notion of relating growth to curvature within the crypt. This has been used to induce polarity within the tissue (Hannezo et al., 2011) and also to tether cell proliferation and differentation to curvature (Buske et al. 2011; Buske et al., 2012). The role of curvature on tissue growth within the crypt does seem to implied, and justifications for including such processes within the referenced models seems like steps in the right direction, but it feels somewhat forced to simply connect growth to curvature---how does a cell know how much it is bending? What is perhaps more appropriate is that growth is connected to a type of _strain_, which in itself is intrinsically connected to curvature. Therefore, a strain-dependent growth law may also be required. One example of such a law is
+
+$$ 
+\frac{\dot{\gamma}}{\gamma} = \mu(\lambda - 1),
+$$
+where $\lambda = \gamma\alpha$ denotes the _total stretch_ within the tissue. Note that in the inextensible case, this results in a non-linear growth law $\dot{\gamma} = \mu(\gamma^2 - \gamma)$. The total stretch $\lambda$ is not coupled directly curvature, but we emphasise that such a law is perhaps a step in the right direction.
+
+As an aside, we should note that everything proposed has been coupled to growth in a linear manner (including the biochemical signal). It may turn out that non-linear coupling will be more appropriate, but we will cross that bridge when we have to.
+
+#### Switching from biochemical to biomechanical growth (and possibly back)
+
+At the moment, the growth stretch $\gamma(S_0, t)$ is in a 1-1 correspondence with the Wnt profile, and thus unimodal in space. However, in truth, as transit-amplifying cells proliferate twice as quickly as base-residing stem cells, $\gamma(S_0, t)$ should have a bimodal profile. This suggests the presence of other influencing behaviours on growth, such as mechanical feedback (or perhaps another biochemical signal such as BMP). More importantly, it suggests that perhaps there is a transition in growth over time, from being biochemically-dominated to biomechanically-dominated.
+It would be worthwhile to model how such a `switch' occurs and the effect of perturbations to such a switch.
+
+### Modelling the stroma
+
+Currently, the underlying elastic foundation is modelled as a continuum of linearly elastic springs, acting as a restoring force towards the $x$-axis. Moreover, the foundation does not undergo any remodelling. As such, this may not be the most biologically realistic way of modelling the underlying stroma. There are a number of potential extensions that may be worth pursuing.
+
+1. _Remodelling_: Perhaps the first obvious extension is to introduce remodelling into the underlying stroma. There are two ways one could do this. 
+
+The first and most straightforward comes from Chirat et al. (2013), where the foundation relaxes to the current rod shape.
+
+\begin{align} 
+F' &= k(x - p_x), \quad\mbox{ where }\quad \dot{p_x} = \eta(x - p_x),\quad  p_x(S_0, 0) = S_0;\\
+G' &= k(y - p_y), \quad\mbox{ where }\quad \dot{p_y} = \eta(y - p_y),\quad p_y(S_0, 0) = 0.
+\end{align}
+
+Another way is akin to the works of Edwards and Chapman (2007) and Nelson et al. (2011), which is to model the underlying foundation to be viscoelastic via a Maxwell constitutive law:
+
+\begin{align}
+\frac{\partial F}{\partial t} + \eta F = \frac{\partial x}{\partial t}, \quad F(S_0, 0) = 0,\\
+\frac{\partial G}{\partial t} + \eta G = \frac{\partial y}{\partial t}, \quad G(S_0, 0) = 0.
+\end{align}
+
+Of course, introducing time dependence adds another layer of computational complexity, but we currently have the machinery to do this, so it's not really an issue.
+
+2. _Nonlinearities_: At the moment, the foundation is linearly elastic. This has allowed for a buckling symmetry; the rod can buckle up or down with no preference for either direction. However, crypts only invaginate, i.e. buckle downwards, and there is a clear sense of tissue polarity, something not found in the current model.
+
+Moreover, with a linear elastic foundation, the types of instability that can occur are effectively limited to buckling. However, given what we know about crypt fission, the process may be interpreted as a secondary bifurcation, in particular as a fold. However, from the literature, it is quite clear that folds cannot occur for standard linear elastic constitutive laws.
+
+Therefore, it would be worthwhile to consider modifying the current constitutive law for the underlying foundation to something nonlinear in behaviour. For example, in Brau et al. (2010), the foundation is effectively modelled by
+
+$$ 
+G' = ky + k_2y^2.
+$$
+
+Another way would be to consider a Neo-Hookean type foundation, as has often been done for biological tissue.
+
+\begin{align}
+F' &= k(\Delta^2 - \Delta^{-1})(x - S_0),\\
+G' &= k(\Delta^2 - \Delta^{-1})y,
+\end{align}
+
+where $\Delta = \sqrt{(x-S_0)^2 + y^2}$.
+
+3. _Coupling to growth_: This has been touched on in the previous section, but it makes a lot of sense to couple growth to an extrinsic source such as the underlying foundation. This will be particularly relevant when exploring wound healing, as has been shown by Miyoshi et al. (2012) and others.
+
+### EphB/EphrinB repulsion---self-contact in the crypt
+
+This extension is perhaps the least important, and also potentially the most difficult to implement in the model, making it a 'bonus'  of sorts. One artefact of the current system is that the invaginations produced are not of a length comparable to crypts witnessed _in vivo_. Part of that is because self-contact occurs early in time simulations, preventing further growth, for if the crypt grew further, the planarity assumption would be violated. This leads to 'pinching' observed within the crypt.  For example, with $\sigma = 0.2L_0$, the rod shape is thusly:
+
+```{r plot crypt pinching, fig.align="center", echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/"
+values = "k_0p02_L0_0p125_sigma0p2L_area1_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(1, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+This artefact has also made it difficult to enforce any dynamic perturbations through the system, say, in the form of mutations to the present gradients. 
+
+One solution around this is to allow self-contact to occur in the model, this allows further growth to occur, potentially yielding a invagination length more akin to that of a crypt. This has been discussed briefly in Chirat et al. (2013), and is a notorious difficult problem to reconcile in mechanics. Also, and more importantly, imposing self-contact is generally not done other than for the sake of curiosity or interest. However, in the context of the crypt, we may actually have reason to include such a process.
+
+It has been shown in the crypt that migration of differentiated and base-residing cells is facilitated by opposing gradients of EphB and EphrinB (Batile et al., 2002). These opposing gradients result in repulsion between cell types; it is this mechanism that is speculated to drive budding in organoids (Sato and Clevers, 2013). The formation of the gradients may thus play a factor in proper invagination of the crypt and can be thought of as a proxy for self-contact.
+
+# Chaste
+Of course, while we implement these extensions, we should be thinking about how to tie this in with the relevant cell-based models in Chaste, namely the Dunn et al. (2011, 2012) deformable epithelium model. In the long term, it would be good to combine the modelling approaches to tackle a specific biological question, perhaps something along the line of injury and wound responses. Alternatively, one could envisage using the cell-based models as a proxy for 'experiments' in the case that we do not get experimental data. Before, we get to that stage, there are a number of things that need to be developed.
+
+### A cell-based model of morphoelasticity
+Currently, we are still in the process of developing a cell-based equivalent of a morphoelastic rod upon a foundation, based on Dunn et al. (2011). At the moment, we have a growing epithelium, implemented in a Voronoi Tessellation-based model, without division or anoikis. Moreover, as it stands, when buckling in this model occurs, only small deformations are observed, akin to 'wrinkling'. Unlike morphoelastic model, the buckling observed is not continuous nor smooth. 
+
+Current tasks to investigate include:
+
+1. Growth without division in an Overlapping Spheres implementation of the basement membrane model.
+2. Adding division to the Voronoi Tessellation model.
+3. Adding division to the Overlapping Spheres model.
+4. Working out how parameters scale between the continuum and individual-based model. 
+
+Perhaps the main difference between the continuum and cell-based model is the explicit inclusion of cell division in the latter. In the former, cell division is lumped in as a contributor towards tissue growth via the growth stretch $\gamma$. However, a question comes to mind: what is the appropriate way to describe non-growth mechanical contributions of a cell division event in a continuum model? Similar questions have been explored in Ranft et al. (2010), which models division events as force dipoles, resulting in relaxation timescales akin to a viscoelastic fluid. It would be interesting to explore different division mechanism proxies in the morphorod model, and to test this against what is observed in the cell-based model.
+
+On the other hand, the continuum model accounts for growth-induced residual stresses, via the elastic stretch $\alpha$, and hence tissue remodelling. Currently, the cell-based model does not have this. If it deemed necessary, we would borrow techniques from the work of James Osborne and Yohan Davit on the inclusion of an evolving reference configuration in these models (e.g. Ruben's work).
+
+Another noticeable difference between the two models is the presence of a basement membrane in the cell-based model. This has not been explicitly modelled in the morphoelastic model (but has been in other continuum models; see Hannezo et al., 2011). However, this is effectively equivalent to incorporating a linear bending moment constitutive relation, allowing for greater flexibility of deformation in the multicellular model.

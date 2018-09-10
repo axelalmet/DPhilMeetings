@@ -1,0 +1,220 @@
+---
+title: "Self-Contact in the Crypt"
+author: "Axel Almet"
+date: "23 May 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(cowplot)
+library(R.matlab)
+library(latex2exp)
+library(RColorBrewer)
+library(ggpubr)
+library(plotly)
+```
+
+# Current model
+The general form of the kinematic and mechanics of the rod read as:
+
+\begin{align}
+&\mathbf{r}' = \alpha\gamma\mathbf{d}_3,\\
+&\mathbf{n}' + \gamma\mathbf{f} = \mathbf{0},\\
+&\mathbf{m}' + \mathbf{r}'\times\mathbf{n} = \mathbf{0}.
+\end{align}
+The general form of the foundation can be written as
+$$ \mathbf{f} = k\frac{\sigma}{\Delta}(\pmb{\rho} - \mathbf{r}), \qquad\mbox{ where }\qquad \Delta = \| \pmb{\rho} - \mathbf{r}\|.$$
+Writing $\rho = S_0\mathbf{e}_x$ and projecting these equations into the Cartesian plane yields
+\begin{align}
+&x' = \alpha\gamma\cos\theta, \qquad y' = \alpha\gamma\sin\theta,\\
+&F' = k\frac{\sigma}{\Delta}(x - S_0), \qquad G' = k\frac{\sigma}{\Delta}y,\\
+&m' = \alpha\gamma(F\sin\theta - G\cos\theta).
+\end{align}
+
+These equations are supplemented by two constituve relations for bending and stretching, respectively:
+
+$$
+m = E_b\gamma^{-1}\theta', \qquad \alpha = 1 + E_s^{-1}(F\cos\theta + G\sin\theta).
+$$
+
+The rod is assumed to be clamped at both ends:
+
+$$
+x(0) = 0, \quad x(L_0) = L_0, \qquad y(0) = y(L_0) = 0, \qquad \theta(0) = \theta(L_0) = 0.
+$$
+
+## Contact at a point: jump force
+Suppose that contact within the rod occurs between two points, $(x(s_1), y(s_1))$ and $(x(s_2), y(s_2))$. If we assume the contact is symmetric about $x = L_0/2$, then we can write
+$$ s_1 = \frac{L_0}{2} - s_c, \qquad s_2 = \frac{L_0}{2} + s_c.$$
+At the point of contact, we modify the external force as such:
+$$ \mathbf{f} = k\frac{\sigma}{\Delta}(\pmb{\rho} - \mathbf{r}) -\sigma_c\delta(s - s_1)\mathbf{e}_x + \sigma_c\delta(s - s_2)\mathbf{e}_x.$$
+Projecting this into $x-y$ coordinates yields a modified horizontal force balance equation:
+$$ F' = k\frac{\sigma}{\Delta}(x - S_0) + \sigma_c(\delta(s - s_1) - \delta(s - s_2)).$$
+As we are working with Dirac delta functions, we must ensure continuity of the horizontal force. Integrating the force balance about $s = s_1$ and $s = s_2$ allows us to obtain the necessary jump conditions:
+\begin{align}
+\left[ F\right]^{s = s_1^+}_{s = s_1^-} &= \int^{s_1^+}_{ s_1^-}k\frac{\sigma}{\Delta}(x - S_0)ds + \sigma_c,\\
+\left[ F\right]^{s = s_2^+}_{s = s_2^-} &= \int^{s_2^+}_{ s_2^-}k\frac{\sigma}{\Delta}(x - S_0)ds - \sigma_c.
+\end{align}
+
+With our symmetry assumption, both $s_1$ and $s_2$ are determined by $s_c$. Therefore, the challenge is to solve for $s_c$ and $\sigma_c$. Considering the geometry of the rod at $s = s_c$ gives two extra conditions to account for these unknown variables:
+$$ x(s_1) = \frac{L_0}{2} - w, \qquad \theta(s_1) = \frac{\pi}{2}. $$
+Here, $w \ge 0$, is a fixed parameter chosen to represent the width of contact. The computational difficulty is clearly incorporating these constraints into the current framework.
+
+## Contact at a point: normal pressure (trapped fluid)
+
+Another way to envision self-contact is to imagine that after the contact, some type of fluid (e.g. mucus) becomes trapped within the loop that is created. This in turn exerts a normal pressure on the crypt such that this area is maintained.
+
+By Green's theorem, the area, $A_0$, between the contact points $s_1$ and $s_2$, is given by 
+
+$$ A_0 = \int^{s_2}_{s_1} x(s)y'(s)ds. $$
+
+This constant area constraint can be accounted for via a Lagrange multiplier in the energy functional. Minimising this new functional via the Calculus of Variations gives rise to new force balance equations:
+
+\begin{align}
+F' &= k\frac{\sigma}{\Delta}(x - S_0) + \sigma_cy', 
+\\G' &= k\frac{\sigma}{\Delta}y - \sigma_cx'.
+\end{align}
+
+Hence, the contact force is given by the vector
+
+$$ \mathbf{f}_\mathrm{new} = \sigma_c(y'\mathbf{e}_x - x'\mathbf{e}_y). $$
+As this contact force is parallel to the normal director basis vector $\mathbf{d}_1 = \sin\theta\mathbf{e}_x - \cos\theta\mathbf{e}_y$, we see that this area constraint exerts a normal pressure on the force balance. The force magnitude $\sigma_c$ is unknown and is to be determined in the resulting numerical solution.
+
+## Reaction force  over a region
+
+Suppose now that we have contact over an interval. On the left, contact occurs over $[s_1, s_2]$, and $[s_3, s_4]$ on the right. Under symmetry assumptions similar to the point case, one can assume
+
+$$ s_1 = \frac{L_0}{2} - s_{c_1},  \quad s_2 = \frac{L_0}{2} - s_{c_2},  \quad s_3 = \frac{L_0}{2} + s_{c_2}, \quad s_4 = \frac{L_0}{2} + s_{c_1}.$$
+
+The body force $\mathbf{f}$ must now account for contact over an interval, and is modified as thus:
+$$ \mathbf{f} = \frac{\sigma}{\Delta}(\pmb{\rho} - \mathbf{r}) -\sigma_c(s)\mathbb{1}_{(s_1, s_2)}\mathbf{e}_x + \sigma_c(s)\mathbb{1}_{(s_3, s_4)}\mathbf{e}_x.$$
+Here, $\mathbb{1}_{(a, b)}$ denotes the indicator function over the interval $(a, b)$. Projecting into $x$ and $y$ coordinates now yields
+$$ F' = k\frac{\sigma}{\Delta}(x - S_0) + \sigma_c(s)\mathbb{1}_{(s_1, s_2)} - \sigma_c(s)\mathbb{1}_{(s_3, s_4)}.$$
+The continuity condition is now different in that, because $\sigma_c(s)$ is a distributed force, we can only solve up to an 'averaged' value of $\sigma_c(s)$. Nevertheless, the conditions are now
+\begin{align}
+\left[ F\right]^{s = s_2}_{s = s_1} &= \int^{s_2}_{s_1}k\frac{\sigma}{\Delta}(x - S_0)ds + \int^{s_2}_{s_1}\sigma_c(s)ds,\\
+\left[ F\right]^{s = s_4}_{s = s_3} &= \int^{s = s_4}_{s = s_3}k\frac{\sigma}{\Delta}(x - S_0)ds - \int^{s_4}_{s_3}\sigma_c(s)ds.
+\end{align}
+As contact is over an extended region, we must now ensure continuity of the vertical force, $G$:
+\begin{align}
+\left[ G\right]^{s = s_2}_{s = s_1}  \int^{s_2}_{s_1}k\frac{\sigma}{\Delta}yds,\qquad
+\left[ G\right]^{s = s_4}_{s = s_3} = \int^{s_4}_{ s_3}k\frac{\sigma}{\Delta}yds.
+\end{align}
+We now have six unknown variables to solve for: $\{s_1, s_2, s_3, s_4,  \int^{s_2}_{s_1}\sigma_cds, \int^{s_4}_{s_3}\sigma_cds\}$.  Assuming symmetrical contact halves this to three unknown variables, $\{s_1, s_2,  \int^{s_2}_{s_1}\sigma_cds\}$. Geometric consideration of the rod during contact give us the three extra conditions to solve for these variables:
+
+$$ x(s) = \frac{L_0}{2} - w, \quad \theta(s) = \frac{\pi}{2}, \quad \theta'(s) = 0, \qquad \forall s \in [s_1, s_2].$$
+NB. It is currently unclear what the appropriate change to the final contact condition is when curvature remodelling is introduced.
+
+## Numerical Implementation
+We implement these contact models using the multipoint functionality of MATLAB's bvp4c. For bvp4c to be happy, it seems that one needs to enforce continuity of $x$, $y$, $\theta$, $G$, and $m$, as well.
+
+<!-- ## Results -->
+
+<!-- ### Self-contact with jump force -->
+<!-- ```{r plot crypt maxwell self contact, echo=FALSE, fig.align="center", warning=FALSE} -->
+<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/Maxwell/" -->
+<!-- values = "jumpcontact_Eb_0p5_sigmaE_2w_simplified_nu_0p16_k_0p02_L0_0p125_sigma_2w_etaK_0p16_initforce" -->
+
+<!-- # Load the solutions -->
+<!-- solsList <- readMat(paste(directory, "sols_", values, ".mat", sep="")) -->
+<!-- # Load the times -->
+<!-- timesList <- readMat(paste(directory, "times_", values, ".mat", sep="")) -->
+<!-- stressesList <- readMat(paste(directory, "maxwellstresses_", values, ".mat", sep="")) -->
+
+<!-- numSols <- length(solsList[[1]]) -->
+<!-- solData <- NULL # Create data frame for solutions -->
+<!-- stressData <- NULL -->
+<!-- curvData <- NULL -->
+
+<!-- # Some parameters -->
+<!-- solCount <- 1 -->
+
+<!-- # # Plot solutions -->
+<!-- for ( i in seq(1, numSols - 4, solCount) ) -->
+<!-- { -->
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsList[[1]][[i]][[1]] -->
+<!--   currentTime = timesList[[1]][[i]] -->
+<!--   stresses <- stressesList[[1]][[i]][[1]] -->
+
+<!--   # Update the solutions -->
+<!--   solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], sC=sol[9,], -->
+<!-- fC=sol[10,]) -->
+<!--   solDataFrame$time = toString(currentTime) -->
+<!--   solData <- rbind(solData, solDataFrame) -->
+<!-- } -->
+
+<!-- solPlot <- ggplot(data=solData, aes(frame=time)) + -->
+<!--   geom_path(aes((15/(2*sqrt(3)))*x, -(15/(2*sqrt(3)))*y + 2*6*125, frame=time), size=0.75) +  -->
+<!--   ylab("y") + xlab("x") +  -->
+<!--   theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +  -->
+<!-- scale_x_continuous(expand = c(0, 0), limits=c(0,126)) +  -->
+<!-- scale_y_continuous(expand = c(0, 0), limits=c(720, 790)) -->
+
+<!-- solPlot <- solPlot + geom_path(aes(125 - (15/(2*sqrt(3)))*x, -(15/(2*sqrt(3)))*y + 2*6*125, frame=time), size=0.75) -->
+
+<!-- animatedPlot <- ggplotly(solPlot, redraw=TRUE, frame=100, transition=0) -->
+
+<!-- animatedPlot -->
+
+<!-- ``` -->
+
+### Self-contact with constant bud area
+
+```{r plot crypt maxwell self contact normal pressure, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/Maxwell/"
+values = "normalcontact_Eb_init_0p5_sigmaE_2w_nu_simple_init_0p16_k_0p02_L0_0p125_sigma_init_2w_etaK_0p16"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+stressesList <- readMat(paste(directory, "maxwellstresses_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+stressData <- NULL
+curvData <- NULL
+
+# Some parameters
+solCount <- 1
+
+# # Plot solutions
+for ( i in seq(1, numSols, solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  stresses <- stressesList[[1]][[i]][[1]]
+
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], A=sol[9,],
+A0=sol[10], sC=sol[11,], fC=sol[12,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+}
+
+# solPlot <- ggplot(data=solData, aes(frame=time)) +
+#   geom_path(aes((15/(2*sqrt(3)))*x, -(15/(2*sqrt(3)))*y + 2*6*125, frame=time), size=0.75) +
+#   ylab("y") + xlab("x") +
+#   theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+# scale_x_continuous(expand = c(0, 0), limits=c(0,126)) +
+# scale_y_continuous(expand = c(0, 0), limits=c(720, 790))
+#
+# solPlot <- solPlot + geom_path(aes(125 - (15/(2*sqrt(3)))*x, -(15/(2*sqrt(3)))*y + 2*6*125, frame=time), size=0.75)
+
+ solPlot <- ggplot(data=solData, aes(frame=time)) +
+   geom_path(aes((15/(2*sqrt(3)))*x, -(15/(2*sqrt(3)))*y, frame=time), size=0.75) +
+   ylab("y") + xlab("x") +
+   theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+scale_x_continuous(expand = c(0, 0), limits=c(0,126))
+
+solPlot <- solPlot + geom_path(aes(125 - (15/(2*sqrt(3)))*x, -(15/(2*sqrt(3)))*y, frame=time), size=0.75)
+
+animatedPlot <- ggplotly(solPlot, redraw=TRUE, easing='back', frame=100, transition=0)
+
+animatedPlot
+
+```

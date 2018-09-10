@@ -1,0 +1,309 @@
+---
+title: "A Cell-Based Equivalent of a Morphoelastic Rod"
+author: "Axel Almet"
+date: "7 March 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(R.matlab)
+library(latex2exp)
+library(RColorBrewer)
+library(gganimate)
+```
+
+## Set-up
+We take the model for deformable, individual-based epithelium accounting for the basement membrane, as proposed by Dunn et al. (2012) and consider it in the context of morphoelasticity.
+
+The position of each cell centre $i$, denoted by the vector $\mathbf{r}_i$, evolves according to a large-drag limit version of Newton's Second Law: 
+
+$$ \eta_i\frac{d\mathbf{r}_i}{dt} = \sum_{j \in N_i(t)}\mathbf{F}^\mathrm{int}_{ij} + \mathbf{F}^{\mathrm{BM}}_i.$$
+
+where the interaction force $\mathbf{F}^\mathrm{int}_{ij}$ is assumed to follow a linear spring law:
+
+$$
+\mathbf{F}^\mathrm{int}_{ij} = \mu_{ij}\left(\|\mathbf{r}_{ij}\| - l_{ij}(t)\right)\widehat{\mathbf{r}}_{ij},
+$$
+and $\mathbf{F}^\mathrm{BM}_i$ is the force exerted on cell centre $i$ due to the underlying basement membrane force. This force is only exerted on epithelial cells, i.e. if $i$ is a non-epithelial cell, then $\mathbf{F}^\mathrm{BM}_i = 0$. For an epithelial cell $i$, the basement membrane force is determined by a local curvature calculation:
+
+$$
+\mathbf{F}^\mathrm{BM}_i = \beta_i\sum_j\kappa_{ij}\widehat{\mathbf{u}}_{ij}.
+$$
+
+The local curvature $\kappa_{ij}$ is calculated at the midpoint of the spring joining epithelial cell centre $i$ and the stromal cell centre $j$, using an disretisation of the standard formula for signed curvature in the plane:
+
+$$
+\kappa(s) = \frac{x'y'' - x''y'}{\left(x^{'^2} + y^{'^2}\right)^{\frac{3}{2}}}.
+$$
+The derivatives are calculated via a finite difference approximation, using the left and right epithelial-stromal midpoints of the considered midpoint.
+
+##  Growing the epithelium
+For simplicity, we assume that there is no proliferation (this will be accounted for eventually). We grow the rod by increasing the mature resting spring length over time. As the mature resting spring length is of unit length, we can define the growth stretch $\gamma$ simply by
+
+$$ \gamma = \max_t l_{ij}(t).$$ 
+
+# Results
+
+If the positions of the epithelium are given by $(x_i, y_i)$, for $i = 1, \dots, N$, where $N$ is the number of epithelial cells, and $(x_1, y_1)$ and $(x_N, y_N)$ are fixed (representing clamped boundary conditions), then we can define the amplitude of the rod, $\|y\|$ in a manner analogous to the morphoelastic rod definition:
+
+$$ \|y \| = \max_{i = 2, \dots, N-1}\|y_i - y_1\|. $$
+For each value of $\mu_{ij}$ and $\beta$, we increased $\gamma$ until the epithelium lost confluence.
+
+We can plot the amplitude values for varying values of $\beta_i$. In the plots below, we have increased $\mu_{EE}$ from $\mu_{EE} = 15$ to $\mu_{EE} = 75$$ for epithelial-epithelial springs.
+
+```{r increasing beta, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/ChasteComparison/"
+values = "varyingEE"
+
+# Load the solutions
+amplitudeValuesList <- readMat(paste(directory, "amplitudeValues_", values, ".mat", sep=""))
+criticalGrowthStretchList <- readMat(paste(directory, "criticalGrowthStretches_", values, ".mat", sep=""))
+# Load the parameters
+springStiffnessesList <- readMat(paste(directory, "springStiffnesses_", values, ".mat", sep=""))
+betaValuesList <- readMat(paste(directory, "betaValues_", values, ".mat", sep=""))
+
+numBetaValues = length(betaValuesList[[1]])
+numSpringStiffnessValues = length(springStiffnessesList[[1]])
+
+for ( j in seq(1, numSpringStiffnessValues, by=1) )
+{
+  springStiffness = springStiffnessesList[[1]][[j]]
+  amplitudeData <- NULL
+  for ( i in seq(numBetaValues, 1, by=-1) )
+  {
+    beta = betaValuesList[[1]][[i]]
+
+    amplitude = amplitudeValuesList$amplitudeValues[[(j-1)*numBetaValues + i]][[1]]
+    amplitudeDataFrame <- data.frame(gamma=amplitude[,1], amp=amplitude[,2])
+    amplitudeDataFrame$beta = toString(beta)
+    amplitudeDataFrame$mu = toString(springStiffness)
+
+    amplitudeData <- rbind(amplitudeData, amplitudeDataFrame)
+  }
+
+  amplitudePlot <- ggplot(amplitudeData) + geom_path(aes(gamma, amp, colour=beta), size=1.0) + ylab('amplitude') + xlab(TeX('$\\gamma$')) + 
+    theme(legend.key = element_rect(fill = "white"), panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18))
+
+  print(amplitudePlot)
+
+}
+```
+
+We can also examine the effect of $\mu_{EE}$ and $\beta$ on the critical growth stretch $\gamma^*$.
+
+```{r critical growth stretch EE, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/ChasteComparison/"
+values = "varyingEE"
+
+# Load the solutions
+criticalGrowthStretchList <- readMat(paste(directory, "criticalGrowthStretches_", values, ".mat", sep=""))
+# Load the parameters
+springStiffnessesList <- readMat(paste(directory, "springStiffnesses_", values, ".mat", sep=""))
+betaValuesList <- readMat(paste(directory, "betaValues_", values, ".mat", sep=""))
+
+numBetaValues = length(betaValuesList[[1]])
+numSpringStiffnessValues = length(springStiffnessesList[[1]])
+
+criticalGrowthStretchesData <- NULL
+
+for ( j in seq(1, numSpringStiffnessValues, by=1) )
+{
+    springStiffness = springStiffnessesList$springStiffnesses[,j]
+
+    criticalGrowthStretches = criticalGrowthStretchList$criticalGrowthStretches[,j]
+    criticalGrowthStretchesDataFrame <- data.frame(beta=t(betaValuesList[[1]]), gamma=criticalGrowthStretches)
+    criticalGrowthStretchesDataFrame$mu = toString(springStiffness)
+    
+    criticalGrowthStretchesData <- rbind(criticalGrowthStretchesData, criticalGrowthStretchesDataFrame)
+}
+  
+  criticalGrowthStretchesPlot <- ggplot(criticalGrowthStretchesData) + geom_path(aes(beta, gamma, colour=mu), size=1.0) + ylab(TeX('$\\gamma^*')) + xlab(TeX('$\\beta$')) +
+    theme(legend.key = element_rect(fill = "white"), panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18))
+
+  print(criticalGrowthStretchesPlot)
+
+```
+
+```{r critical growth stretch beta, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/ChasteComparison/"
+values = "varyingEE"
+
+# Load the solutions
+criticalGrowthStretchList <- readMat(paste(directory, "criticalGrowthStretches_", values, ".mat", sep=""))
+# Load the parameters
+springStiffnessesList <- readMat(paste(directory, "springStiffnesses_", values, ".mat", sep=""))
+betaValuesList <- readMat(paste(directory, "betaValues_", values, ".mat", sep=""))
+
+numBetaValues = length(betaValuesList[[1]])
+numSpringStiffnessValues = length(springStiffnessesList[[1]])
+
+criticalGrowthStretchesData <- NULL
+
+for ( j in seq(1, numBetaValues, by=1) )
+{
+    beta = betaValuesList$betaValues[,j]
+
+    criticalGrowthStretches = criticalGrowthStretchList$criticalGrowthStretches[j,]
+    criticalGrowthStretchesDataFrame <- data.frame(mu=t(springStiffnessesList[[1]]), gamma=criticalGrowthStretches)
+    criticalGrowthStretchesDataFrame$beta = toString(beta)
+    
+    criticalGrowthStretchesData <- rbind(criticalGrowthStretchesData, criticalGrowthStretchesDataFrame)
+}
+  
+  criticalGrowthStretchesPlot <- ggplot(criticalGrowthStretchesData) + geom_path(aes(mu, gamma, colour=beta), size=1.0) + ylab(TeX('$\\gamma^*')) + xlab(TeX('$\\mu$')) +
+    theme(legend.key = element_rect(fill = "white"), panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18))
+
+  print(criticalGrowthStretchesPlot)
+
+```
+
+Of course, we could be more precise and calculate $\gamma^*$ using a bisection method on parameter sweeps.
+
+We can play a similar game with the stiffness of the stroma, by changing both $\mu_{ES}$ and $\mu_{SS}$.
+```{r increasing beta varying stroma, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/ChasteComparison/"
+values = "varyingSS"
+
+# Load the solutions
+amplitudeValuesList <- readMat(paste(directory, "amplitudeValues_", values, ".mat", sep=""))
+criticalGrowthStretchList <- readMat(paste(directory, "criticalGrowthStretches_", values, ".mat", sep=""))
+# Load the parameters
+springStiffnessesList <- readMat(paste(directory, "springStiffnesses_", values, ".mat", sep=""))
+betaValuesList <- readMat(paste(directory, "betaValues_", values, ".mat", sep=""))
+
+numBetaValues = length(betaValuesList[[1]])
+numSpringStiffnessValues = length(springStiffnessesList[[1]])
+
+for ( j in seq(1, numSpringStiffnessValues, by=1) )
+{
+  springStiffness = springStiffnessesList[[1]][[j]]
+  amplitudeData <- NULL
+  for ( i in seq(numBetaValues, 1, by=-1) )
+  {
+    beta = betaValuesList[[1]][[i]]
+
+    amplitude = amplitudeValuesList$amplitudeValues[[(j-1)*numBetaValues + i]][[1]]
+    amplitudeDataFrame <- data.frame(gamma=amplitude[,1], amp=amplitude[,2])
+    amplitudeDataFrame$beta = toString(beta)
+    amplitudeDataFrame$mu = toString(springStiffness)
+
+    amplitudeData <- rbind(amplitudeData, amplitudeDataFrame)
+  }
+
+  amplitudePlot <- ggplot(amplitudeData) + geom_path(aes(gamma, amp, colour=beta), size=1.0) + ylab('amplitude') + xlab(TeX('$\\gamma$')) + 
+    theme(legend.key = element_rect(fill = "white"), panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18))
+
+  print(amplitudePlot)
+
+}
+```
+
+Looking at the changes to $\gamma^*$ for varying stroma stiffness:
+```{r critical growth stretch SS, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/ChasteComparison/"
+values = "varyingSS"
+baseValues = "varyingEE"
+
+# Load the solutions
+criticalGrowthStretchList <- readMat(paste(directory, "criticalGrowthStretches_", values, ".mat", sep=""))
+# Load the parameters
+springStiffnessesList <- readMat(paste(directory, "springStiffnesses_", values, ".mat", sep=""))
+betaValuesList <- readMat(paste(directory, "betaValues_", values, ".mat", sep=""))
+
+numBetaValues = length(betaValuesList[[1]])
+numSpringStiffnessValues = length(springStiffnessesList[[1]])
+
+criticalGrowthStretchesData <- NULL
+
+for ( j in seq(1, numSpringStiffnessValues, by=1) )
+{
+    springStiffness = springStiffnessesList$springStiffnesses[,j]
+
+    criticalGrowthStretches = criticalGrowthStretchList$criticalGrowthStretches[,j]
+    criticalGrowthStretchesDataFrame <- data.frame(beta=t(betaValuesList[[1]]), gamma=criticalGrowthStretches)
+    criticalGrowthStretchesDataFrame$mu = toString(springStiffness)
+    
+    criticalGrowthStretchesData <- rbind(criticalGrowthStretchesData, criticalGrowthStretchesDataFrame)
+}
+  
+  criticalGrowthStretchesPlot <- ggplot(criticalGrowthStretchesData) + geom_path(aes(beta, gamma, colour=mu), size=1.0) + ylab(TeX('$\\gamma^*')) + xlab(TeX('$\\beta$')) +
+    theme(legend.key = element_rect(fill = "white"), panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18))
+
+  print(criticalGrowthStretchesPlot)
+
+```
+
+```{r critical growth stretch beta SS, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/ChasteComparison/"
+values = "varyingSS"
+
+# Load the solutions
+criticalGrowthStretchList <- readMat(paste(directory, "criticalGrowthStretches_", values, ".mat", sep=""))
+# Load the parameters
+springStiffnessesList <- readMat(paste(directory, "springStiffnesses_", values, ".mat", sep=""))
+betaValuesList <- readMat(paste(directory, "betaValues_", values, ".mat", sep=""))
+
+numBetaValues = length(betaValuesList[[1]])
+numSpringStiffnessValues = length(springStiffnessesList[[1]])
+
+criticalGrowthStretchesData <- NULL
+
+for ( j in seq(1, numBetaValues, by=1) )
+{
+    beta = betaValuesList$betaValues[,j]
+
+    criticalGrowthStretches = criticalGrowthStretchList$criticalGrowthStretches[j,]
+    criticalGrowthStretchesDataFrame <- data.frame(mu=t(springStiffnessesList[[1]]), gamma=criticalGrowthStretches)
+    criticalGrowthStretchesDataFrame$beta = toString(beta)
+    
+    criticalGrowthStretchesData <- rbind(criticalGrowthStretchesData, criticalGrowthStretchesDataFrame)
+}
+  
+  criticalGrowthStretchesPlot <- ggplot(criticalGrowthStretchesData) + geom_path(aes(mu, gamma, colour=beta), size=1.0) + ylab(TeX('$\\gamma^*')) + xlab(TeX('$\\mu$')) +
+    theme(legend.key = element_rect(fill = "white"), panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18))
+
+  print(criticalGrowthStretchesPlot)
+
+```
+
+## Looking at $\mu_{ES}$ only
+
+```{r increasing beta varying ES, echo=FALSE}
+directory = "~/Documents/Morphorods/Code/MATLAB/ChasteComparison/"
+values = "varyingES"
+
+# Load the solutions
+amplitudeValuesList <- readMat(paste(directory, "amplitudeValues_", values, ".mat", sep=""))
+criticalGrowthStretchList <- readMat(paste(directory, "criticalGrowthStretches_", values, ".mat", sep=""))
+# Load the parameters
+springStiffnessesList <- readMat(paste(directory, "springStiffnesses_", values, ".mat", sep=""))
+betaValuesList <- readMat(paste(directory, "betaValues_", values, ".mat", sep=""))
+
+numBetaValues = length(betaValuesList[[1]])
+numSpringStiffnessValues = length(springStiffnessesList[[1]])
+
+for ( j in seq(1, numSpringStiffnessValues, by=1) )
+{
+  springStiffness = springStiffnessesList[[1]][[j]]
+  amplitudeData <- NULL
+  for ( i in seq(numBetaValues, 1, by=-1) )
+  {
+    beta = betaValuesList[[1]][[i]]
+
+    amplitude = amplitudeValuesList$amplitudeValues[[(j-1)*numBetaValues + i]][[1]]
+    amplitudeDataFrame <- data.frame(gamma=amplitude[,1], amp=amplitude[,2])
+    amplitudeDataFrame$beta = toString(beta)
+    amplitudeDataFrame$mu = toString(springStiffness)
+
+    amplitudeData <- rbind(amplitudeData, amplitudeDataFrame)
+  }
+
+  amplitudePlot <- ggplot(amplitudeData) + geom_path(aes(gamma, amp, colour=beta), size=1.0) + ylab('amplitude') + xlab(TeX('$\\gamma$')) + 
+    theme(legend.key = element_rect(fill = "white"), panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18))
+
+  print(amplitudePlot)
+
+}
+```

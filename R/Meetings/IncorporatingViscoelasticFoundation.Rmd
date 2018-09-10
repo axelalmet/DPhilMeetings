@@ -1,0 +1,356 @@
+---
+title: "Incorporating a Viscoelastic Foundation"
+author: "Axel Almet"
+date: "24 April 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(cowplot)
+library(R.matlab)
+library(latex2exp)
+library(RColorBrewer)
+```
+
+# Current model
+
+To remind us, the model in its current form is described by the following equations for kinematics and mechanics:
+
+\begin{align}
+&x' = \alpha\gamma\cos\theta, \qquad y' = \alpha\gamma\sin\theta,\\
+&F' = k(x - S_0), \qquad G' = ky,\\
+&m' = \alpha\gamma(F\sin\theta - G\cos\theta).
+\end{align}
+
+These equations are supplemented by two constituve relations for bending and stretching, respectively:
+
+$$
+m = E_b\gamma^{-1}\theta', \qquad \alpha = 1 + E_s^{-1}(F\cos\theta + G\sin\theta).
+$$
+
+For computational simplicity, we have assumed that the rod is inextensible, equivalent to imposing $\alpha \equiv 1$.
+The rod is assumed to be clamped at both ends:
+
+$$
+x(0) = 0, \quad x(L_0) = L_0, \qquad y(0) = y(L_0) = 0, \qquad \theta(0) = \theta(L_0) = 0.
+$$
+At the moment, we have been considering growth due to a chemical signal profile, assumed to be in a steady state:
+
+$$ \frac{\dot{\gamma}}{\gamma} =  W(S_0). $$
+
+## A viscoelastic foundation
+
+We now modify the force equations to incorporate a viscoelastic foundation. We model the underlying springs by a Maxwell constitutive law, as was done in Nelson et al. (2011):
+
+\begin{align}
+&F' = k_0p_x\ ,\quad \mbox{ where }\quad \frac{\partial}{\partial t}\left(p_x - x\right) + \nu p_x = 0;\\
+&G' = k_0p_y\ , \quad \mbox{ where }\quad \frac{\partial}{\partial t}\left(p_y - y\right) + \nu p_y = 0.\\
+\end{align}
+The dimensionless parameter $\nu$ characterises the relaxation timescale of the foundation, and is defined by 
+
+$$\nu = \frac{k_0^*}{\nu^*\eta^*}, $$
+where $k_0$ is the homogeneous foundation stiffness, $T^*$ is a representative timescale and $\nu^*$ represents the viscoelastic relaxation timescale. Note that if $\nu* \to \infty$, we recover the elastic foundation in the previous model.
+
+For all investigations at the moment, we choose the Wnt gradient width to be $\sigma = 0.1L_0$. For an elastic foundation with homogeneous foundation and rod stiffnesses, the shape evolution is thus:
+
+```{r plot reference crypt, echo=FALSE, fig.align="center"}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/LinearElasticFoundation/"
+values = "k_0p02_L0_0p125_sigma0p1L_area1_mu0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(1, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+## Effects of Viscoelasticity
+
+For $\nu = 0$ ($\nu^* \to \infty$), we should observe similar behaviour to the elastic foundation case.
+```{r plot crypt nu 0, echo=FALSE, fig.align="center"}
+directory = "~/Documents/Morphorods/Code/MATLAB/MechanochemicalGrowth/Solutions/LinearViscoelasticFoundation/"
+values = "nu_0_k_0p02_L0_0p125_sigma_0p1L_area_1_mu_0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 1
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+
+For $\nu^* = \eta^{-1}$, i.e. the elastic and viscous timescales are equal, we start to observe the effects of viscoelasticity. The invagination has increased in length and we see the 'bulb' at the bottom is more pronounced.
+
+```{r plot crypt nu 0p02, echo=FALSE, fig.align="center"}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/"
+values = "nu_0p02_k_0p02_L0_0p125_sigma_0p1L_area_1_mu_0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 3
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+Cranking up the viscosity parameter to $\nu = 2$, where $\nu^* = 10^{-2}\eta^{-1}$, this effect becomes even more pronounced. 
+
+```{r plot crypt nu 2, echo=FALSE, fig.align="center"}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/"
+values = "nu_2_k_0p02_L0_0p125_sigma_0p1L_area_1_mu_0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 3
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(0,31))
+
+solPlot
+```
+
+And even further to $\nu = 20$:
+
+```{r plot crypt nu 20, echo=FALSE, fig.align="center"}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/"
+values = "nu_20_k_0p02_L0_0p125_sigma_0p1L_area_1_mu_0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 3
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(-5,35))
+
+solPlot
+```
+
+These results seem to verify what is observed in Nelson et al. (2011).
+
+We can see that as we increasing $\nu$ leads to increase in the length of the crypt bud. However, this also leads to abnormal bulging of the crypt base. Thus, it remains to consider what is an appropriate heterogeneity to result in a normal crypt shape.
+
+## Viscoelasticity from rod theory
+As it will turn out, defining viscoelastic components in the $x$ and $y$ directions is not quite the same as defining the vectorised force and projecting it into its components.
+
+$$ \mathbf{n}' + \alpha\gamma\mathbf{f} = \mathbf{0}.$$
+To model $\mathbf{f}$ as a viscoelastic foundation, we define a map with respect ot the initial attachment made between the rod and the foundation
+
+$$ \mathbf{f} = \frac{\sigma}{\Delta}(\pmb{\rho}(\hat{S}) - \mathbf{r}), \mbox{ where } \Delta = \| \pmb{\rho}(\hat{S}) - \mathbf{r})\|. $$
+It remains then to describe relate $\sigma$ to strain. We model the change to $\sigma$ as a Maxwell spring element, describing a spring and dashpot in series. Thus, the change in strain is given by
+
+$$
+\frac{\partial \Delta}{\partial t} = \frac{1}{E\nu^*}\sigma + \frac{1}{Ek}\frac{\partial \sigma}{\partial t}.
+$$
+
+Non-dimensionalising this relation appropriately gives
+
+$$
+\frac{\partial}{\partial t}(\sigma - \Delta) + \nu\sigma = 0.
+$$
+
+Defining $\mathbf{n} = (F, G)$, $\mathbf{\  rho} = (S_0, 0)$, and $\mathbf{r} = (x, y)$, finally yields
+
+$$ F' = k\frac{\sigma}{\Delta}(x - S_0), \qquad G' = k\frac{\sigma}{\Delta}y.$$
+
+Thus, the viscoelastic force involves contributions from strain in both the $x$ and $y$ direction, which are not independent of each other.
+
+It is possible to make one simplifying assumption: if horizontal displacement is dominated by vertical displacement, i.e. $|x - S_0| \ll |y|$, then the resulting force balance is
+
+$$ F' = 0, \qquad G' = k\sigma, \mbox{ where } \frac{\partial}{\partial t}(\sigma - y) + \nu\sigma = 0.$$
+```{r plot crypt approx visco nu 0p02, echo=FALSE, fig.align="center"}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/ApproximatedLinearViscoelasticFoundation/"
+values = "Eb_1_nu_0p02_k_0p02_L0_0p125_sigma_0p1L_area_1_mu_0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 3
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(-5,35))
+
+solPlot
+
+```{r plot crypt approx visconu 20, echo=FALSE, fig.align="center"}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/ApproximatedLinearViscoelasticFoundation/"
+values = "Eb_1_nu_20_k_0p02_L0_0p125_sigma_0p1L_area_1_mu_0_inext"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+
+# Some parameters
+solCount <- 3
+# Plot solutions
+for ( i in seq(2, numSols, by=solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+solPlot <- ggplot(solData) + geom_path(aes(x, -y, colour=time), size=1.0) + ylab(TeX('$y$')) + 
+            xlab(TeX('$x$')) + 
+            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+            scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) +
+            scale_x_continuous(expand = c(0, 0), limits=c(-5,35))
+
+solPlot
+```
