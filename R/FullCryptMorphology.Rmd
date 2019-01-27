@@ -1,5 +1,5 @@
 ---
-title: "Obtaining a full crypt morphology"
+title: "Modelling the sub-epithelial stroma in the intestine"
 author: "Axel Almet"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
@@ -14,6 +14,7 @@ library(latex2exp)
 library(RColorBrewer)
 library(ggpubr)
 library(plotly)
+library(tikzDevice)
 ```
 
 # Generalised-set up
@@ -32,7 +33,7 @@ The equations describing geometric constraints and balance of linear and angular
 \end{align}
 For simplicity, we assume the rod is clamped horizontally at the boundaries:
 \begin{align}
-x(0) = 0, \qquad x(L_0) = 0, \qquad y(0) = y(L_0) =  y_0, \qquad \theta(0) = \theta(L_0) = 0.
+x(0) = 0, \qquad x(1) = 0, \qquad y(0) = y(1) =  y_0, \qquad \theta(0) = \theta(1) = 0.
 \end{align}
 
 The parameter $L_0$ is the initial rod length, giving the horizontal interval of deformation for the crypt. 
@@ -60,40 +61,23 @@ n_x' = k(x - S_0), \qquad n_y' = ky.
 \end{align}
 
 ### Linear viscoelastic
-When modelling linear viscoelasticity, we have two choices: a Kelvin-Voigt law or a Maxwell law. The latter has been the most popular choice for previous models.
+We model linear viscoelasticity using a standard linear solid model, which captures aspects of the simpler Kelvin-Voigt and Maxwell models. The model is constructed by attaching a linear, elastic spring with stiffness $E_1$ in parallel to a Maxwell unit with spring stiffness $E_2$ and viscosity $\eta$. The dimensional form of the constitutive law for $\sigma$ takes the following form:
+\begin{align}
+\frac{1}{E_2}\dot{\sigma} + \frac{1]{\eta}\sigma = \frac{E_2}{\eta}\Delta + \left(\frac{E_1 + E_2}{E_2}\right)\dot{\Delta}
+\end{align}
+Observe that $\nu\to 0$ yields an elastic foundation; $E_1 = 0$ yields a Maxwell model, while $E_2 \to \infty$ yields a Kelvin-Voigt law. However, in order to preserve the buckling mode for all values of $E_1$ and $E_2$, we must impose that $E_1$ and $E_2$ contribute to the a conserved bulk foundation stiffness. That is, $E_1 + E_2 = Ek_f$, where $E$ is the rod stiffness and $k_f > 0$ quantifies the foundation stiffness. We therefore write $E_1 = (1 - \beta)Ek_f$, $E_2 = \beta Ek_f$, where $\beta \in (0, 1)$.
 
-In the case of Kelvin-Voigt viscoelasticity, stress is modelled to have simultaneous elastic and viscous contributions (a spring and dashpot in parallel): 
+After non-dimensionalisation, we have the following stress-strain law:
 \begin{align}
-\sigma = \sigma_E + \sigma_V.
+\dot{\sigma} + \frac{\beta}{\nu}\sigma = k\left(\frac{\beta(1 - \beta)}{\nu}\Delta + \dot{\Delta}\right),
 \end{align}
-In our framework, we model the elastic contribution as $\sigma_E = k\Delta$, and the viscous contribution by $\sigma_V = \nu\dot{\Delta}$. After substitution and non-dimensionalisation, we have the following stress-strain law:
+where the dimensionless parameters $\nu$ and $k$ are defined by
 \begin{align}
-\sigma = \Delta + \eta\dot{\Delta}, 
+\nu = \frac{\eta}{Ek_f\tau}, \qquad k = \frac{k_fL_0^4}{I}.
 \end{align}
-where $\eta$ describes the (non-dimensional) viscoelasticty of the foundation. Observe that the special case $\eta = 0$ gives the elastic foundation model. We model the foundation attachment to be unchanging, and given by $\pmb{\rho} = (S_0, 0)$. The linear momentum equations are now given by
+The parameter $\nu$ represents the relaxation rate of the foundation stresses in proportion to the foundation stiffness and growth timescale, while $k$ is the re-scaled foundation stiffness. Observe that the special case $\eta = 0$ gives the elastic foundation model. We model the foundation attachment to be unchanging, and given by $\pmb{\rho} = (S_0, 0)$. The linear momentum equations are now given by
 \begin{align}
-n_x' = k\gamma\frac{\sigma}{\Delta}(x - S_0), \qquad n_y' = k\gamma\frac{\sigma}{\Delta}y.
-\end{align}
-We can simplify the force balance further by assuming that horizontal displacement is dominated by vertical displacment, i.e. $|x - S_0| \ll |y|$. Then $\Delta \sim y$ and we have
-\begin{align}
-n_x' = 0, \quad n_y' = k\gamma\sigma, \qquad\mbox{ where }\qquad \sigma = y + \eta\dot{y}.
-\end{align}
-
-In the case of a Maxwell foundation, we describe strain contributions from an elastic and viscous component (in series):
-\begin{align}
-\Delta = \Delta_E + \Delta_V.
-\end{align}
-Differentiating the above law with respect to time and substituting the laws for the elastic and viscous contributions leads to the following after non-dimensionalisation:
-\begin{align}
-\dot{\sigma} - \dot{\Delta} + \eta\sigma = 0.
-\end{align}
-We note that setting $\eta = 0$ reduces the model to the elastic foundation, as was true for the Kelvin-Voigt model. The force balance equations are equivalent to the Kelvin-Voigt case in form:
-\begin{align}
-n_x' = k\gamma\frac{\sigma}{\Delta}(x - S_0), \qquad n_y' = k\gamma\frac{\sigma}{\Delta}y.
-\end{align}
-Applying the same approximation as previously, we obtain
-\begin{align}
-n_x' = 0, \quad n_y' = k\gamma \sigma, \qquad\mbox{ where }\qquad \dot{\sigma} - \dot{y} + \eta\sigma = 0.
+n_x' = \gamma\frac{\sigma}{\Delta}(x - S_0), \qquad n_y' = \gamma\frac{\sigma}{\Delta}y.
 \end{align}
 
 ### Remodelling foundation
@@ -109,19 +93,6 @@ The force balance equations in this case are given by
 \end{align}
 This law describes the relaxation of the foundation to the current crypt shape, dependent on the relaxation rate $\eta$. As before, setting $\eta = 0$ recovers the elastic foundation model. 
 
-# Other types of relaxation
-So far, we have only considered relaxation due to the evolution of foundation stresses or the foundation shape. However, it is also very possible that the relaxation of the epithelium itself---say, due to rearrangements of tight junctions and integrins---plays a role in the morphogenesis of the crypt. Mathematically speaking, this is equivalent to an evolution of the intrinsic curvature of the rod. We thus modify the moment-curvature relation above to account for an evolving intrinsic curvature $\hat{\kappa}$, as such:
-\begin{align}
-m = E_b(\theta'\gamma^{-1} - \hat{\kappa}),
-\end{align}
-where we note that the first term on the right hand side is equivalent to the current (growth) curvature, $\kappa = \frac{\partial\theta}{\partial s}$. 
-The simplest law for the evolution of $\hat{\kappa}$ takes the following form:
-\begin{align}
-\frac{\partial\hat{\kappa}}{\partial t} = \chi(\kappa - \widehat{\kappa}).
-\end{align}
-
-
-
 # Results
 
 In all simulations, we set growth to be homogeneous and increasing at a constant rate in time:
@@ -130,13 +101,11 @@ In all simulations, we set growth to be homogeneous and increasing at a constant
 \end{align}
 and set the bending stiffness $E_b \equiv 1$ to be spatially homogeneous. The foundation stiffness is set to $k_f = 0.001$, while the cross-section of the rod is assumed to be rectangular, with height $h = 15 \mu\mathrm{m}$ and width $w = 10 \mu\mathrm{m}$, and the dimensional initial rod length is $L_0 = 125\mu\mathrm{m}$.
 
-### Elastic foundation 
+### No foundation
 
-The elastic foundation case is the simplest because there is no relaxation of neither the stresses nor the foundation shape. Hence, the shape of the rod is completely determined by two parameters in this model, the growth stretch $\gamma$ and the foundation stiffness $k$. Here is a typical growth evolution of the rod shape until self-contact. 
-
-```{r plot elastic foundation kf 0p001, echo=FALSE, fig.align="center", warning=FALSE}
+```{r plot no foundation, echo=FALSE, fig.align="center", warning=FALSE}
 directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearElasticFoundation/"
-values = "Eb_1_kf_0p001_L0_0p125_homoggrowth"
+values = "Eb_1_kf_0_L0_0p125_homoggrowth"
 
 # Load the solutions
 solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
@@ -148,7 +117,7 @@ solData <- NULL # Create data frame for solutions
 solPointData <- NULL
 
 # Some parameters
-solCount <- 3
+solCount <- 2
 pointCount <- 10
 
 # # Plot solutions
@@ -157,7 +126,7 @@ for ( i in seq(2, numSols, solCount) )
   # Extract the solution, growth and time
   sol <- solsList[[1]][[i]][[1]]
   currentTime = timesList[[1]][[i]]
-
+  
   # Update the solutions
   solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
   solDataFrame$time = toString(currentTime)
@@ -166,19 +135,65 @@ for ( i in seq(2, numSols, solCount) )
 
 solPlot <- ggplot()
 solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=0.75)  +  ylab(TeX('$y\\,(\\mu m)$')) +   xlab(TeX('$x\\, (\\mu m)$')) + 
-            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(-1.05, 2.05)) + 
-  scale_y_continuous(expand = c(0, 0), limits=c(-1.30, 0.05)) + 
-scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount))
+  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(-1.05, 2.05)) + 
+  scale_y_continuous(expand = c(0, 0), limits=c(-1.05, 0.05)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount))
+
+solPlot
+```
+
+### Elastic foundation 
+
+The elastic foundation case is the simplest because there is no relaxation of neither the stresses nor the foundation shape. Hence, the shape of the rod is completely determined by two parameters in this model, the growth stretch $\gamma$ and the foundation stiffness $k$. Here is a typical growth evolution of the rod shape until self-contact. 
+
+```{r plot elastic foundation kf 0p01, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearElasticFoundation/"
+values = "Eb_1_kf_0p01_L0_0p125_homoggrowth"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+timeSample = 1.0
+finalIndex = match(timeSample, timesList$times)
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+solPointData <- NULL
+
+# Some parameters
+solCount <- 2
+
+# # Plot solutions
+for ( i in seq(2, finalIndex, solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+}
+
+solPlot <- ggplot()
+solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=0.75)  +  ylab(TeX('$y\\,(\\mu m)$')) +   xlab(TeX('$x\\, (\\mu m)$')) + 
+  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(-1.05, 2.05)) + 
+  scale_y_continuous(expand = c(0, 0), limits=c(-0.8, 0.3)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount))
 
 solPlot
 ```
 
 We can also plot the horizontal and vertical force components, $n_x$ and $n_y$, and the non-dimensional stress, $\sigma = \Delta$.
 
-```{r plot elastic foundation stress kf 0p001, echo=FALSE, fig.align="center", warning=FALSE}
+```{r plot elastic foundation stress kf 0p01, echo=FALSE, fig.align="center", warning=FALSE}
 directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearElasticFoundation/"
-values = "Eb_1_kf_0p001_L0_0p125_homoggrowth"
+values = "Eb_1_kf_0p01_L0_0p125_homoggrowth"
 
 # Load the solutions
 solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
@@ -198,30 +213,34 @@ for ( i in seq(3, numSols, solCount) )
   # Extract the solution, growth and time
   sol <- solsList[[1]][[i]][[1]]
   currentTime = timesList[[1]][[i]]
-
+  
   # Update the solutions
   solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
   solDataFrame$time = toString(currentTime)
   solData <- rbind(solData, solDataFrame)
   
-  stressDataFrame <- data.frame(S=sol[1,], nX=sol[5,], nY=sol[6,], sigma=sqrt((sol[3,] - sol[2,])^2 + (sol[4,])^2))
+  stressDataFrame <- data.frame(S=sol[1,], nX=sol[5,], nY=sol[6,], n1=sol[6,]*cos(sol[7,])-sol[5,]*sin(sol[7,]), n3=sol[6,]*sin(sol[7,])+sol[5,]*cos(sol[7,]),sigma=sqrt((sol[3,] - sol[2,])^2 + (sol[4,])^2))
   stressDataFrame$time = toString(currentTime)
   stressData <- rbind(stressData, stressDataFrame)
 }
 
 solPlotnX <- ggplot() +  geom_path(data=solData, aes(S, nX, color=time), size=0.75)  +  ylab(TeX('$n_x$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
 
 solPlotnY <- ggplot() +  geom_path(data=solData, aes(S, -nY, color=time), size=0.75)  +  ylab(TeX('$n_y$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
 
-solPlotsigma <- ggplot() +  geom_path(data=stressData, aes(S, sigma, color=time), size=0.75)  +  ylab(TeX('$\\sigma$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+solPlotn1 <- ggplot() +  geom_path(data=stressData, aes(S, n1, color=time), size=0.75)  +  ylab(TeX('$n_1$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
 
-ggarrange(solPlotnX, solPlotnY, solPlotsigma, labels = c("a)", "b)", "c)"))
+solPlotn3 <- ggplot() +  geom_path(data=stressData, aes(S, n3, color=time), size=0.75)  +  ylab(TeX('$n_3$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+ggarrange(solPlotnX, solPlotnY, solPlotn1, solPlotn3)
 ```
 
 We see that non-uniformities develop in $n_x$ as $\gamma$ increases, as the post-buckled evolution relieves horizontal compression within the rod. Furthermore, observe that the stress becomes most pronounced at the tip of the invagination. This feature turns out to be common amongst all foundation models explored.
@@ -230,14 +249,207 @@ We see that non-uniformities develop in $n_x$ as $\gamma$ increases, as the post
 
 For a Maxwell foundation, we observe that the horizontal forces are effectively uniform for increasing $\gamma$, and the stress is once again most pronounced at the invagination tip. However, we do see that the stress decreases at later times, due to the rapid relaxation of $n_x$.
 
-```{r plot viscoelastic foundation stress kf 0p001 nu 0p001, echo=FALSE, fig.align="center", warning=FALSE}
-directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/Maxwell/"
-values = "Eb_1_nu_0p001_kf_0p001_L0_0p125_homoggrowth"
+We first set $\beta = 1$, corresponding to a Maxwell foundation, for comparison with previous literature results. We see that increasing $\nu$ quickens the rate of invagination by the creep, as expected. Interestingly, for values of $\nu \gtrsim 10$, the differences in shape are negligible.
+
+```{r plot SLS foundation kf 0p01 compare nu fixed time beta 1, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+
+nuValues <- c("1", "5", "10", "50")
+timeSample = 0.9
+
+maxValues = "Eb_1_beta_1_nu_50_kf_0p01_L0_0p125_homoggrowth"
+maxTimesList  <- readMat(paste(directory, "times_", maxValues, ".mat", sep=""))
+maxNumSols <- length(maxTimesList$times)
+maxTime <- maxTimesList$times[maxNumSols]
+
+solCount <- 1
+solPlot <- ggplot()
+
+count <- 1
+for (i in seq(1, length(nuValues), 1))
+{
+  nu = nuValues[i]
+  
+  values = paste("Eb_1_beta_1_nu_", nu, "_kf_0p01_L0_0p125_homoggrowth", sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  solData <- NULL 
+  finalIndex = match(timeSample, timesList$times)
+  
+  if (i == length(nuValues))
+  {
+    startIndex <- 2
+    solCount <- 2
+  }
+  else
+  {
+    startIndex <- 2
+    solCount <- 2
+  }
+  
+  for ( j in seq(startIndex, finalIndex, solCount) )
+  {
+    # Extract the solution, growth and time
+    sol <- solsList[[1]][[j]][[1]]
+    currentTime <- timesList$times[j]/maxTime
+    
+    # Update the solutions
+    solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+    solDataFrame$time = as.factor(currentTime)
+    solData <- rbind(solData, solDataFrame)
+    
+  }
+  
+  solPlot <- solPlot + geom_path(data=solData, aes(x, 6 - y, color=time), size=0.75)
+  
+}
+
+solPlot <- solPlot +  ylab(TeX('$y$')) +   xlab(TeX('$x$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(9)) +
+  scale_x_continuous(expand = c(0, 0), limits=c(0, length(nuValues)*1.5))
+
+solPlot
+```
+
+
+```{r plot SLS foundation kf 0p01 compare nu relaxation beta 1, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+
+nuValues <- c("1", "5", "10", "50")
+timeSample = 0.9
+
+
+solCount <- 1
+solPlot <- ggplot()
+
+count <- 1
+for (i in seq(1, length(nuValues), 1))
+{
+  nu = nuValues[i]
+  
+  values = paste("Eb_1_beta_1_nu_", nu, "_kf_0p01_L0_0p125_relaxation", sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  solData <- NULL 
+  finalIndex = length(timesList$newTimes)
+  
+  if (i == length(nuValues))
+  {
+    startIndex <- 1
+    solCount <- 2
+  }
+  else
+  {
+    startIndex <- 1
+    solCount <- 2
+  }
+  
+  for ( j in seq(startIndex, finalIndex, solCount) )
+  {
+    # Extract the solution, growth and time
+    sol <- solsList[[1]][[j]][[1]]
+    currentTime <- timesList$newTimes[j]/maxTime
+    
+    # Update the solutions
+    solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+    solDataFrame$time = as.factor(currentTime)
+    solData <- rbind(solData, solDataFrame)
+    
+  }
+  
+  solPlot <- solPlot + geom_path(data=solData, aes(x, 6 - y, color=time), size=0.75)
+  
+}
+
+solPlot <- solPlot +  ylab(TeX('$y$')) +   xlab(TeX('$x$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(46)) +
+  scale_x_continuous(expand = c(0, 0), limits=c(0, length(nuValues)*1.5))
+
+solPlot
+```
+
+
+```{r plot SLS foundation kf 0p01 compare nu final shape beta 1, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+
+nuValues <- c("1", "5", "10", "50")
+timeSample = 0.9
+
+maxValues = "Eb_1_beta_1_nu_50_kf_0p01_L0_0p125_homoggrowth"
+maxTimesList  <- readMat(paste(directory, "times_", maxValues, ".mat", sep=""))
+maxNumSols <- length(maxTimesList$times)
+maxTime <- maxTimesList$times[maxNumSols]
+
+solCount <- 1
+solPlot <- ggplot()
+
+count <- 1
+for (i in seq(1, length(nuValues), 1))
+{
+  nu = nuValues[i]
+  
+  values = paste("Eb_1_beta_1_nu_", nu, "_kf_0p01_L0_0p125_homoggrowth", sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  solData <- NULL 
+  finalIndex = length(timesList$times)
+  
+  if (i == length(nuValues))
+  {
+    startIndex <- 2
+    solCount <- 2
+  }
+  else
+  {
+    startIndex <- 2
+    solCount <- 2
+  }
+  
+  for ( j in seq(startIndex, finalIndex, solCount) )
+  {
+    # Extract the solution, growth and time
+    sol <- solsList[[1]][[j]][[1]]
+    currentTime <- timesList$times[j]/maxTime
+    
+    # Update the solutions
+    solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+    solDataFrame$time = as.factor(currentTime)
+    solData <- rbind(solData, solDataFrame)
+    
+  }
+  
+  solPlot <- solPlot + geom_path(data=solData, aes(x, 6 - y, color=time), size=0.75)
+  
+}
+
+solPlot <- solPlot +  ylab(TeX('$y$')) +   xlab(TeX('$x$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(maxNumSols/solCount)) +
+  scale_x_continuous(expand = c(0, 0), limits=c(0, length(nuValues)*1.5))
+
+solPlot
+```
+
+
+```{r plot SLS foundation stress kf 0p01 beta 1 nu 1, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+values = "Eb_1_beta_1_nu_1_kf_0p01_L0_0p125_homoggrowth"
 
 # Load the solutions
 solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
 # Load the times
-stressesList <- readMat(paste(directory, "maxwellstresses_", values, ".mat", sep=""))
+stressesList <- readMat(paste(directory, "stresses_", values, ".mat", sep=""))
 # Load the times
 timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
 
@@ -246,232 +458,764 @@ solData <- NULL # Create data frame for solutions
 stressData <- NULL
 
 # Some parameters
-solCount <- 3
-
-# # Plot solutions
-for ( i in seq(3, numSols, solCount) )
-{
-  # Extract the solution, growth and time
-  sol <- solsList[[1]][[i]][[1]]
-  stressSol <- stressesList[[1]][[i]][[1]]
-  currentTime = timesList[[1]][[i]]
-
-  # Update the solutions
-  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
-  solDataFrame$time = toString(currentTime)
-  solData <- rbind(solData, solDataFrame)
-  
-  stressDataFrame <- data.frame(S=stressSol[1,], nX=sol[5,], nY=sol[6,], sigma=stressSol[2,])
-  stressDataFrame$time = toString(currentTime)
-  stressData <- rbind(stressData, stressDataFrame)
-}
-
-solPlotnX <- ggplot() +  geom_path(data=solData, aes(S, nX, color=time), size=0.75)  +  ylab(TeX('$n_x$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
-
-solPlotnY <- ggplot() +  geom_path(data=solData, aes(S, -nY, color=time), size=0.75)  +  ylab(TeX('$n_y$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
-
-solPlotsigma <- ggplot() +  geom_path(data=stressData, aes(S, sigma, color=time), size=0.75)  +  ylab(TeX('$\\sigma$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
-
-ggarrange(solPlotnX, solPlotnY, solPlotsigma, labels = c("a)", "b)", "c)"))
-```
-
-The uniformity of $n_x$ suggests that we can approximate the full viscoelastic law by a vertically-dominated law ($\Delta \sim y$). However, the plots show that the behaviour, at least in a morphological sense, is not the same for various values of $\eta$.
-```{r plot approx maxwell foundation kf 0p001 compare nu, echo=FALSE, fig.align="center", warning=FALSE}
-directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/Maxwell/"
-directorynu0 = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearElasticFoundation/"
-
-valuesnu0 = "Eb_1_kf_0p001_L0_0p125_homoggrowth"
-valuesnu1 = "Eb_1_nu_simple_0p001_kf_0p001_L0_0p125_homoggrowth"
-valuesnu10 = "Eb_1_nu_simple_0p01_kf_0p001_L0_0p125_homoggrowth"
-valuesnu50 = "Eb_1_nu_simple_0p05_kf_0p001_L0_0p125_homoggrowth"
-valuesfullnu1 = "Eb_1_nu_0p001_kf_0p001_L0_0p125_homoggrowth"
-valuesfullnu10 = "Eb_1_nu_0p01_kf_0p001_L0_0p125_homoggrowth"
-valuesfullnu50 = "Eb_1_nu_0p05_kf_0p001_L0_0p125_homoggrowth"
-
-
-# Load the solutions
-solsListnu0 <- readMat(paste(directorynu0, "sols_", valuesnu0, ".mat", sep=""))
-solsListnu1 <- readMat(paste(directory, "sols_", valuesnu1, ".mat", sep=""))
-solsListnu10 <- readMat(paste(directory, "sols_", valuesnu10, ".mat", sep=""))
-solsListnu50 <- readMat(paste(directory, "sols_", valuesnu50, ".mat", sep=""))
-
-solsListfullnu1 <- readMat(paste(directory, "sols_", valuesfullnu1, ".mat", sep=""))
-solsListfullnu10 <- readMat(paste(directory, "sols_", valuesfullnu10, ".mat", sep=""))
-solsListfullnu50 <- readMat(paste(directory, "sols_", valuesfullnu50, ".mat", sep=""))
-
-# Load the times
-timesListnu0 <- readMat(paste(directorynu0, "times_", valuesnu0, ".mat", sep=""))
-timesListnu1 <- readMat(paste(directory, "times_", valuesnu1, ".mat", sep=""))
-timesListnu10 <- readMat(paste(directory, "times_", valuesnu10, ".mat", sep=""))
-timesListnu50 <- readMat(paste(directory, "times_", valuesnu50, ".mat", sep=""))
-
-timesListfullnu1 <- readMat(paste(directory, "times_", valuesfullnu1, ".mat", sep=""))
-timesListfullnu10 <- readMat(paste(directory, "times_", valuesfullnu10, ".mat", sep=""))
-timesListfullnu50 <- readMat(paste(directory, "times_", valuesfullnu50, ".mat", sep=""))
-
-numSolsnu0 <- length(solsListnu0[[1]])
-numSolsnu1 <- length(solsListnu1[[1]])
-numSolsnu10 <- length(solsListnu10[[1]])
-numSolsnu50 <- length(solsListnu50[[1]])
-numSolsfullnu1 <- length(solsListfullnu1[[1]])
-numSolsfullnu10 <- length(solsListfullnu10[[1]])
-numSolsfullnu50 <- length(solsListfullnu50[[1]])
-
-solDatanu0 <- NULL
-solDatanu1 <- NULL # Create data frame for solutions
-solDatanu10 <- NULL # Create data frame for solutions
-solDatanu50 <- NULL # Create data frame for solutions
-solDatafullnu1 <- NULL # Create data frame for solutions
-solDatafullnu10 <- NULL # Create data frame for solutions
-solDatafullnu50 <- NULL # Create data frame for solutions
-
-# Some parameters
-solCount <- 3
-
-# Extract the solution, growth and time
-solnu0 <- solsListnu0[[1]][[numSolsnu0]][[1]]
-currentTimenu0 = timesListnu0[[1]][[numSolsnu0]]
-                                   
-solnu1 <- solsListnu1[[1]][[numSolsnu1]][[1]]
-currentTimenu1 = timesListnu1[[1]][[numSolsnu1]]
-
-solnu10 <- solsListnu10[[1]][[numSolsnu10]][[1]]
-currentTimenu10 = timesListnu10[[1]][[numSolsnu10]]
-
-solnu50 <- solsListnu50[[1]][[numSolsnu50]][[1]]
-currentTimenu50 = timesListnu50[[1]][[numSolsnu50]]
-
-solfullnu1 <- solsListfullnu1[[1]][[numSolsfullnu1]][[1]]
-currentTimefullnu1 = timesListfullnu1[[1]][[numSolsfullnu1]]
-
-solfullnu10 <- solsListfullnu10[[1]][[numSolsfullnu10]][[1]]
-currentTimefullnu10 = timesListfullnu10[[1]][[numSolsfullnu10]]
-
-solfullnu50 <- solsListfullnu50[[1]][[numSolsfullnu50]][[1]]
-currentTimefullnu50 = timesListfullnu50[[1]][[numSolsfullnu50]]
-
-# Update the solutions
-
-solDataFramenu0 <- data.frame(S=solnu0[2,], x=solnu0[3,], y=solnu0[4,], nX=solnu0[5,], nY=solnu0[6,], theta=solnu0[7,], m=solnu0[8,])
-solDataFramenu0$time = toString(currentTimenu0)
-solDataFramenu0$eta = toString("0")
-solDatanu0 <- solDataFramenu0
-
-solDataFramenu1 <- data.frame(S=solnu1[2,], x=solnu1[3,], y=solnu1[4,], nX=solnu1[5,], nY=solnu1[6,], theta=solnu1[7,], m=solnu1[8,])
-solDataFramenu1$time = toString(currentTimenu1)
-solDataFramenu1$eta = toString("1")
-solDatanu1 <- solDataFramenu1
-
-solDataFramenu10 <- data.frame(S=solnu10[2,], x=solnu10[3,], y=solnu10[4,], nX=solnu10[5,], nY=solnu10[6,], theta=solnu10[7,], m=solnu10[8,])
-solDataFramenu10$time = toString(currentTimenu10)
-solDataFramenu10$eta = toString("10")
-solDatanu10 <- solDataFramenu10
-
-solDataFramenu50 <- data.frame(S=solnu50[2,], x=solnu50[3,], y=solnu50[4,], nX=solnu50[5,], nY=solnu50[6,], theta=solnu50[7,], m=solnu50[8,])
-solDataFramenu50$time = toString(currentTimenu50)
-solDataFramenu50$eta = toString("50")
-solDatanu50 <- solDataFramenu50
-
-solDataFramefullnu1 <- data.frame(S=solfullnu1[2,], x=solfullnu1[3,], y=solfullnu1[4,], nX=solfullnu1[5,], nY=solfullnu1[6,], theta=solfullnu1[7,], m=solfullnu1[8,])
-solDataFramefullnu1$time = toString(currentTimefullnu1)
-solDataFramefullnu1$eta = toString("1")
-solDatafullnu1 <- solDataFramefullnu1
-
-solDataFramefullnu10 <- data.frame(S=solfullnu10[2,], x=solfullnu10[3,], y=solfullnu10[4,], nX=solfullnu10[5,], nY=solfullnu10[6,], theta=solfullnu10[7,], m=solfullnu10[8,])
-solDataFramefullnu10$time = toString(currentTimefullnu10)
-solDataFramefullnu10$eta = toString("10")
-solDatafullnu10 <- solDataFramefullnu10
-
-solDataFramefullnu50 <- data.frame(S=solfullnu50[2,], x=solfullnu50[3,], y=solfullnu50[4,], nX=solfullnu50[5,], nY=solfullnu50[6,], theta=solfullnu50[7,], m=solfullnu50[8,])
-solDataFramefullnu50$time = toString(currentTimefullnu50)
-solDataFramefullnu50$eta = toString("50")
-solDatafullnu50 <- solDataFramefullnu50
-
-## Add to gg plot
-solPlot <- ggplot()
-solPlot <- solPlot + geom_path(data=solDatanu0, aes(x, -y, color=eta), size=0.75)  +  ylab(TeX('$y$')) +   xlab(TeX('$x$')) +
-            theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(-0.05, 1.05)) +
-  scale_y_continuous(expand = c(0, 0), limits=c(-1.05, 0.15))
-
-solPlot <- solPlot + geom_path(data=solDatanu1, aes(x, 6 - y, color=eta))
-
-solPlot <- solPlot + geom_path(data=solDatanu10, aes(x, 6 - y, color=eta))
-
-solPlot <- solPlot + geom_path(data=solDatanu50, aes(x, 6 - y, color=eta))
-solPlot <- solPlot + scale_colour_manual(values=colorRampPalette(brewer.pal(4, "PuBu"))(4))
-
-fullsolPlot <- ggplot()
-fullsolPlot <- fullsolPlot + geom_path(data=solDatanu0, aes(x, -y, color=eta), size=0.75)  +  ylab(TeX('$y$')) +
-  theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(-0.05, 1.05)) +
-  scale_y_continuous(expand = c(0, 0), limits=c(-1.05, 0.15))
-
-fullsolPlot <- fullsolPlot + geom_path(data=solDatafullnu1, aes(x, 6 - y, color=eta))
-
-fullsolPlot <- fullsolPlot + geom_path(data=solDatafullnu10, aes(x, 6 - y, color=eta))
-
-fullsolPlot <- fullsolPlot + geom_path(data=solDatafullnu50, aes(x, 6 - y, color=eta))
-
-fullsolPlot <- fullsolPlot + scale_colour_manual(values=colorRampPalette(brewer.pal(4, "PuBu"))(4))
-
-ggarrange(fullsolPlot, solPlot, labels = c("a)", "b)"))
-```
-
-### Remodelling foundation
-
-Below is the typical evolution for a rod attached a remodelling foundation.   
-```{r plot remodelling foundation kf 0p001 nu 1, echo=FALSE, fig.align="center", warning=FALSE}
-directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
-values = "Eb_1_nu_1_kf_0p001_L0_0p125_homoggrowth"
-
-# Load the solutions
-solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
-# Load the times
-timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
-
-numSols <- length(solsList[[1]])
-solData <- NULL # Create data frame for solutions
-solPointData <- NULL
-
-# Some parameters
-solCount <- 3
-pointCount <- 10
+solCount <- 2
 
 # # Plot solutions
 for ( i in seq(2, numSols, solCount) )
 {
   # Extract the solution, growth and time
   sol <- solsList[[1]][[i]][[1]]
+  stressSol <- stressesList[[1]][[i]][[1]]
   currentTime = timesList[[1]][[i]]
-
+  
   # Update the solutions
   solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
   solDataFrame$time = toString(currentTime)
   solData <- rbind(solData, solDataFrame)
+  
+  stressDataFrame <- data.frame(S=stressSol[1,], nX=sol[5,], nY=sol[6,], sigma=stressSol[2,], n1=sol[6,]*cos(sol[7,]) - sol[5,]*sin(sol[7,]), n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,]))
+  stressDataFrame$time = toString(currentTime)
+  stressData <- rbind(stressData, stressDataFrame)
 }
 
-solPlot <- ggplot()
-solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=0.75)  +  ylab(TeX('$y$')) +   xlab(TeX('$x$')) + 
-            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(-1.05, 2.05)) + 
-  scale_y_continuous(expand = c(0, 0), limits=c(-1.3, 0.05)) + 
-scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount))
+solPlotnX <- ggplot() +  geom_path(data=solData, aes(S, nX, color=time), size=0.75)  +  ylab(TeX('$n_x$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
 
-solPlot
+solPlotnY <- ggplot() +  geom_path(data=solData, aes(S, -nY, color=time), size=0.75)  +  ylab(TeX('$n_y$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotn1 <- ggplot() +  geom_path(data=stressData, aes(S, n1, color=time), size=0.75)  +  ylab(TeX('$n_1$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotn3 <- ggplot() +  geom_path(data=stressData, aes(S, n3, color=time), size=0.75)  +  ylab(TeX('$n_3$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotsigma <- ggplot() +  geom_path(data=stressData, aes(S, sigma, color=time), size=0.75)  +  ylab(TeX('$\\sigma$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+ggarrange(solPlotnX, solPlotnY, solPlotn3, solPlotn1)
+
 ```
 
-As expected, the stress profiles for a remodelling foundation are very similar to those for an elastic foundation, with the stress being most concentrated at the tip of the invagination.
+```{r plot SLS foundation stress kf 0p01 beta 1 nu 50, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+values = "Eb_1_beta_1_nu_50_kf_0p01_L0_0p125_homoggrowth"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+stressesList <- readMat(paste(directory, "stresses_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+stressData <- NULL
+
+# Some parameters
+solCount <- 2
+
+# # Plot solutions
+for ( i in seq(2, numSols, solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  stressSol <- stressesList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+  stressDataFrame <- data.frame(S=stressSol[1,], nX=sol[5,], nY=sol[6,], sigma=stressSol[2,], n1=sol[6,]*cos(sol[7,]) - sol[5,]*sin(sol[7,]), n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,]))
+  stressDataFrame$time = toString(currentTime)
+  stressData <- rbind(stressData, stressDataFrame)
+}
+
+solPlotnX <- ggplot() +  geom_path(data=solData, aes(S, nX, color=time), size=0.75)  +  ylab(TeX('$n_x$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotnY <- ggplot() +  geom_path(data=solData, aes(S, -nY, color=time), size=0.75)  +  ylab(TeX('$n_y$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotn1 <- ggplot() +  geom_path(data=stressData, aes(S, n1, color=time), size=0.75)  +  ylab(TeX('$n_1$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotn3 <- ggplot() +  geom_path(data=stressData, aes(S, n3, color=time), size=0.75)  +  ylab(TeX('$n_3$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotsigma <- ggplot() +  geom_path(data=stressData, aes(S, sigma, color=time), size=0.75)  +  ylab(TeX('$\\sigma$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+ggarrange(solPlotnX, solPlotnY, solPlotn3, solPlotn1)
+
+```
+
+We now set $\beta = 0.5$, balancing relaxation with creep in the foundation stress constitutive law. 
+
+```{r plot SLS foundation kf 0p01 compare nu fixed time beta 0p5, echo=FALSE, fig.align="center", warning=FALSE}
+
+nuValues <- c("1", "5", "10", "50")
+timeSample = 0.9
+
+maxValues = "Eb_1_beta_0p5_nu_50_kf_0p01_L0_0p125_homoggrowth"
+maxTimesList  <- readMat(paste(directory, "times_", maxValues, ".mat", sep=""))
+maxNumSols <- length(maxTimesList$times)
+maxTime <- maxTimesList$times[maxNumSols]
+
+solCount <- 1
+solPlot <- ggplot()
+
+for (i in seq(1, length(nuValues), 1))
+{
+  if (nuValues[i] == "0")
+  {
+    directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearElasticFoundation/"
+    values = "Eb_1_kf_0p01_L0_0p125_homoggrowth"
+    
+    # Load the solutions
+    solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+    # Load the times
+    timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+    
+    solData <- NULL 
+    finalIndex = match(timeSample, timesList$times)
+    
+    if (i == length(nuValues))
+    {
+      startIndex <- 2
+      solCount <- 2
+    }
+    else
+    {
+      startIndex <- 2
+      solCount <- 2
+    }
+    
+    for ( j in seq(startIndex, finalIndex, solCount) )
+    {
+      # Extract the solution, growth and time
+      sol <- solsList[[1]][[j]][[1]]
+      currentTime <- timesList$times[j]/maxTime
+      
+      # Update the solutions
+      solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+      solDataFrame$time = as.factor(currentTime)
+      solData <- rbind(solData, solDataFrame)
+      
+    }
+    
+    solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=0.75)
+  }
+  else
+  {
+    nu = nuValues[i]
+    
+    directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+    values = paste("Eb_1_beta_1_nu_", nu, "_kf_0p01_L0_0p125_homoggrowth", sep="")
+    
+    # Load the solutions
+    solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+    # Load the times
+    timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+    
+    solData <- NULL 
+    finalIndex = match(timeSample, timesList$times)
+    
+    if (i == length(nuValues))
+    {
+      startIndex <- 2
+      solCount <- 2
+    }
+    else
+    {
+      startIndex <- 2
+      solCount <- 2
+    }
+    
+    for ( j in seq(startIndex, finalIndex, solCount) )
+    {
+      # Extract the solution, growth and time
+      sol <- solsList[[1]][[j]][[1]]
+      currentTime <- timesList$times[j]/maxTime
+      
+      # Update the solutions
+      solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+      solDataFrame$time = as.factor(currentTime)
+      solData <- rbind(solData, solDataFrame)
+      
+    }
+    
+    solPlot <- solPlot + geom_path(data=solData, aes(x, 6 - y, color=time), size=0.75)
+    
+  }
+}
+
+tikz(file = "PlotSLSFoundationBeta0p5FixedTimeVaryingNu.tex", standAlone = T, width = 5, height = 3)
+solPlot <- solPlot +  ylab('$y$') +   xlab('$x$') +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(9)) +
+  scale_x_continuous(expand = c(0, 0), limits=c(0, length(nuValues)*1.5))
+
+print(solPlot)
+dev.off()
+
+tools::texi2dvi('PlotSLSFoundationBeta0p5FixedTimeVaryingNu.tex', pdf = T, clean = T)
+```
+
+```{r plot SLS foundation kf 0p01 compare nu relaxation beta 0p5, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+
+nuValues <- c("1", "5", "10", "50")
+timeSample = 0.9
+
+solCount <- 1
+solPlot <- ggplot()
+
+count <- 1
+for (i in seq(1, length(nuValues), 1))
+{
+  nu = nuValues[i]
+  
+  values = paste("Eb_1_beta_0p5_nu_", nu, "_kf_0p01_L0_0p125_relaxation", sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  solData <- NULL 
+  finalIndex = length(timesList$newTimes)
+  
+  if (i == length(nuValues))
+  {
+    startIndex <- 1
+    solCount <- 2
+  }
+  else
+  {
+    startIndex <- 1
+    solCount <- 2
+  }
+  
+  for ( j in seq(startIndex, finalIndex, solCount) )
+  {
+    # Extract the solution, growth and time
+    sol <- solsList[[1]][[j]][[1]]
+    currentTime <- timesList$newTimes[j]/maxTime
+    
+    # Update the solutions
+    solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+    solDataFrame$time = as.factor(currentTime)
+    solData <- rbind(solData, solDataFrame)
+    
+  }
+  
+  solPlot <- solPlot + geom_path(data=solData, aes(x, 6 - y, color=time), size=0.75)
+  
+}
+
+tikz(file = "PlotSLSFoundationBeta0p5RelaxationVaryingNu.tex", standAlone = T, width = 5, height = 3)
+solPlot <- solPlot +  ylab('$y$') +   xlab('$x$') +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(46)) +
+  scale_x_continuous(expand = c(0, 0), limits=c(0, length(nuValues)*1.5))
+
+print(solPlot)
+dev.off()
+
+tools::texi2dvi('PlotSLSFoundationBeta0p5RelaxationVaryingNu.tex', pdf = T, clean = T)
+```
+
+```{r plot SLS foundation kf 0p01 compare nu final shape beta 0p5, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+
+nuValues <- c("1", "5", "10", "50")
+timeSample = 0.9
+
+maxValues = "Eb_1_beta_0p5_nu_50_kf_0p01_L0_0p125_homoggrowth"
+maxTimesList  <- readMat(paste(directory, "times_", maxValues, ".mat", sep=""))
+maxNumSols <- length(maxTimesList$times)
+maxTime <- maxTimesList$times[maxNumSols]
+
+solCount <- 1
+solPlot <- ggplot()
+
+count <- 1
+for (i in seq(1, length(nuValues), 1))
+{
+  nu = nuValues[i]
+  
+  values = paste("Eb_1_beta_0p5_nu_", nu, "_kf_0p01_L0_0p125_homoggrowth", sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  solData <- NULL 
+  finalIndex = length(timesList$times)
+  
+  if (i == length(nuValues))
+  {
+    startIndex <- 2
+    solCount <- 2
+  }
+  else
+  {
+    startIndex <- 2
+    solCount <- 2
+  }
+  
+  for ( j in seq(startIndex, finalIndex, solCount) )
+  {
+    # Extract the solution, growth and time
+    sol <- solsList[[1]][[j]][[1]]
+    currentTime <- timesList$times[j]/maxTime
+    
+    # Update the solutions
+    solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+    solDataFrame$time = as.factor(currentTime)
+    solData <- rbind(solData, solDataFrame)
+    
+  }
+  
+  solPlot <- solPlot + geom_path(data=solData, aes(x, 6 - y, color=time), size=0.75)
+  
+}
+
+tikz(file = "PlotSLSFoundationBeta0p5FinalTimeVaryingNu.tex", standAlone = T, width = 5, height = 3)
+solPlot <- solPlot +  ylab('$y$') +   xlab('$x$') +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(maxNumSols/solCount)) +
+  scale_x_continuous(expand = c(0, 0), limits=c(0, length(nuValues)*1.5))
+
+print(solPlot)
+dev.off()
+
+tools::texi2dvi('PlotSLSFoundationBeta0p5FinalTimeVaryingNu.tex', pdf = T, clean = T)
+
+```
+
+```{r plot SLS foundation stress kf 0p01 beta 0p5 nu 1, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+values = "Eb_1_beta_0p5_nu_1_kf_0p01_L0_0p125_homoggrowth"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+stressesList <- readMat(paste(directory, "stresses_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+stressData <- NULL
+
+# Some parameters
+solCount <- 2
+
+# # Plot solutions
+for ( i in seq(2, numSols, solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  stressSol <- stressesList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+  stressDataFrame <- data.frame(S=stressSol[1,], nX=sol[5,], nY=sol[6,], sigma=stressSol[2,], n1=sol[6,]*cos(sol[7,]) - sol[5,]*sin(sol[7,]), n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,]))
+  stressDataFrame$time = toString(currentTime)
+  stressData <- rbind(stressData, stressDataFrame)
+}
+
+solPlotnX <- ggplot() +  geom_path(data=solData, aes(S, nX, color=time), size=0.75)  +  ylab(TeX('$n_x$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotnY <- ggplot() +  geom_path(data=solData, aes(S, -nY, color=time), size=0.75)  +  ylab(TeX('$n_y$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotn1 <- ggplot() +  geom_path(data=stressData, aes(S, n1, color=time), size=0.75)  +  ylab(TeX('$n_1$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotn3 <- ggplot() +  geom_path(data=stressData, aes(S, n3, color=time), size=0.75)  +  ylab(TeX('$n_3$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotsigma <- ggplot() +  geom_path(data=stressData, aes(S, sigma, color=time), size=0.75)  +  ylab(TeX('$\\sigma$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+ggarrange(solPlotnX, solPlotnY, solPlotn3, solPlotn1)
+
+```
+
+```{r plot SLS foundation stress kf 0p01 beta 0p5 nu 50, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+values = "Eb_1_beta_0p5_nu_50_kf_0p01_L0_0p125_homoggrowth"
+
+# Load the solutions
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+# Load the times
+stressesList <- readMat(paste(directory, "stresses_", values, ".mat", sep=""))
+# Load the times
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+stressData <- NULL
+
+# Some parameters
+solCount <- 2
+
+# # Plot solutions
+for ( i in seq(2, numSols, solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  stressSol <- stressesList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+  stressDataFrame <- data.frame(S=stressSol[1,], nX=sol[5,], nY=sol[6,], sigma=stressSol[2,], n1=sol[6,]*cos(sol[7,]) - sol[5,]*sin(sol[7,]), n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,]))
+  stressDataFrame$time = toString(currentTime)
+  stressData <- rbind(stressData, stressDataFrame)
+}
+
+solPlotnX <- ggplot() +  geom_path(data=solData, aes(S, nX, color=time), size=0.75)  +  ylab(TeX('$n_x$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotnY <- ggplot() +  geom_path(data=solData, aes(S, -nY, color=time), size=0.75)  +  ylab(TeX('$n_y$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotn1 <- ggplot() +  geom_path(data=stressData, aes(S, n1, color=time), size=0.75)  +  ylab(TeX('$n_1$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotn3 <- ggplot() +  geom_path(data=stressData, aes(S, n3, color=time), size=0.75)  +  ylab(TeX('$n_3$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotsigma <- ggplot() +  geom_path(data=stressData, aes(S, sigma, color=time), size=0.75)  +  ylab(TeX('$\\sigma$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+ggarrange(solPlotnX, solPlotnY, solPlotn3, solPlotn1)
+
+```
+
+### Remodelling foundation
+
+The parameter that is clearly of most interest is the foundation relaxation parameter $\eta$. Here, we plot the final, pre-self-contact shape for various values of $\eta$. Increasing $\eta$ has the two-fold effect of increasing both the invagination length, as well as the bulge width, effectively keeping the aspect ratio constant as $\eta$ increases.
+
+```{r plot remodelling foundation kf 0p01 compare nu fixed time, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+nuValues <- c("1", "5", "10", "50")
+timeSample = 1.0
+
+maxValues = "Eb_1_nu_50_kf_0p01_L0_0p125_homoggrowth"
+maxTimesList  <- readMat(paste(directory, "times_", maxValues, ".mat", sep=""))
+maxNumSols <- length(maxTimesList$times)
+maxTime <- maxTimesList$times[maxNumSols]
+
+solCount <- 1
+solPlot <- ggplot()
+
+count <- 1
+for (i in seq(1, length(nuValues), 1))
+{
+  if (nuValues[i] == "0")
+  {
+    directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearElasticFoundation/"
+    values = "Eb_1_kf_0p01_L0_0p125_homoggrowth"
+    
+    # Load the solutions
+    solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+    # Load the times
+    timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+    
+    solData <- NULL 
+    finalIndex <- match(timeSample, timesList$times)
+    
+    startIndex <- 2
+    solCount <- 2
+    
+    for ( j in seq(startIndex, finalIndex, solCount) )
+    {
+      # Extract the solution, growth and time
+      sol <- solsList[[1]][[j]][[1]]
+      currentTime <- timesList$times[j]/maxTime
+      
+      # Update the solutions
+      solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+      solDataFrame$time = as.factor(currentTime)
+      solData <- rbind(solData, solDataFrame)
+      
+    }
+    
+    solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=0.75)
+    
+  }
+  else
+  {
+    directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+    nu = nuValues[i]
+    
+    values = paste("Eb_1_nu_", nu, "_kf_0p01_L0_0p125_homoggrowth", sep="")
+    
+    # Load the solutions
+    solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+    # Load the times
+    timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+    
+    solData <- NULL 
+    finalIndex <- match(timeSample, timesList$times)
+    
+    if (i == length(nuValues))
+    {
+      startIndex <- 5
+      solCount <- 9
+    }
+    else
+    {
+      startIndex <- 2
+      solCount <- 2
+    }
+    
+    for ( j in seq(startIndex, finalIndex, solCount) )
+    {
+      # Extract the solution, growth and time
+      sol <- solsList[[1]][[j]][[1]]
+      currentTime <- timesList$times[j]/maxTime
+      
+      # Update the solutions
+      solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+      solDataFrame$time = as.factor(currentTime)
+      solData <- rbind(solData, solDataFrame)
+      
+    }
+    
+    solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=0.75)
+  }
+  
+}
+
+tikz(file = "PlotRemodellingFoundationVaryingEta.tex", standAlone = T, width = 5, height = 3)
+solPlot <- solPlot +  ylab('$y$') +   xlab('$x$') +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(20)) +
+  scale_x_continuous(expand = c(0, 0), limits=c(0, length(nuValues)*1.5 + 0.5)) + 
+  scale_y_continuous(expand = c(0, 0), limits=c(-0.8, 0.30))
+
+print(solPlot)
+dev.off()
+
+tools::texi2dvi('PlotRemodellingFoundationVaryingEta.tex', pdf = T, clean = T)
+
+```
+
+We see that for higher values of $\eta$, the resultant shapes are not too dissimilar at $t = 1.0$. Moreover, once growth is paused and the foundation shapes are allowed to relax, the resultant shape does not vary significantly for $\eta \gtrsim 10$.
+
+```{r plot remodelling foundation kf 0p01 compare nu relaxation, echo=FALSE, fig.align="center", warning=FALSE}
+
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+nuValues <- c("1", "5", "10", "50")
+timeSample = 1.0
+
+maxValues = "Eb_1_nu_1_kf_0p01_L0_0p125_relaxation"
+maxTimesList  <- readMat(paste(directory, "times_", maxValues, ".mat", sep=""))
+maxNumSols <- length(maxTimesList$newTimes)
+maxTime <- maxTimesList$newTimes[maxNumSols]
+
+solPlot <- ggplot()
+
+for (i in seq(1, length(nuValues), 1))
+{
+  nu = nuValues[i]
+  
+  values = paste("Eb_1_nu_", nu, "_kf_0p01_L0_0p125_relaxation", sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  
+  solData <- NULL
+  finalIndex = length(timesList$newTimes)
+  
+  if (i == length(nuValues))
+  {
+    startIndex <- 2
+    solCount <- 2
+  }
+  else
+  {
+    startIndex <- 2
+    solCount <- 2
+  }
+  
+  for ( j in seq(startIndex, finalIndex, solCount) )
+  {
+    # Extract the solution, growth and time
+    sol <- solsList[[1]][[j]][[1]]
+    currentTime <- timesList$newTimes[j]/maxTime
+    
+    # Update the solutions
+    solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+    solDataFrame$time = as.factor(currentTime)
+    solData <- rbind(solData, solDataFrame)
+    
+  }
+  
+  solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=0.75)
+  
+}
+
+tikz(file = "PlotRemodellingFoundationRelaxationVaryingEta.tex", standAlone = T, width = 5, height = 3)
+solPlot <- solPlot +  ylab('$y$') +   xlab('$x$') +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(58)) +
+  scale_x_continuous(expand = c(0, 0), limits=c(0, length(nuValues)*1.5)) + scale_y_continuous(expand = c(0, 0), limits=c(-0.8, 0.3))
+
+print(solPlot)
+dev.off()
+
+tools::texi2dvi('PlotRemodellingFoundationRelaxationVaryingEta.tex', pdf = T, clean = T)
+```
+
+Of course, it is perhaps the final pre-self-contact shape that is most affected by $\eta$.
+
+```{r plot remodelling foundation kf 0p01 compare nu final shape, echo=FALSE, fig.align="center", warning=FALSE}
+
+nuValues <- c("1", "5", "10", "50")
+timeSample = 1.0
+
+maxValues = "Eb_1_nu_50_kf_0p01_L0_0p125_homoggrowth"
+maxTimesList  <- readMat(paste(directory, "times_", maxValues, ".mat", sep=""))
+maxNumSols <- length(maxTimesList$times)
+maxTime <- maxTimesList$times[maxNumSols]
+
+solCount <- 1
+solPlot <- ggplot()
+
+count <- 1
+for (i in seq(1, length(nuValues), 1))
+{
+  if (nuValues[i] == "0")
+  {
+    directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearElasticFoundation/"
+    values = "Eb_1_kf_0p01_L0_0p125_homoggrowth"
+    
+    # Load the solutions
+    solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+    # Load the times
+    timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+    
+    solData <- NULL 
+    finalIndex <- length(timesList$times)
+    
+    startIndex <- 2
+    solCount <- 2
+    
+    for ( j in seq(startIndex, finalIndex, solCount) )
+    {
+      # Extract the solution, growth and time
+      sol <- solsList[[1]][[j]][[1]]
+      currentTime <- timesList$times[j]/maxTime
+      
+      # Update the solutions
+      solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+      solDataFrame$time = as.factor(currentTime)
+      solData <- rbind(solData, solDataFrame)
+      
+    }
+    
+    solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=0.75)
+  }
+  else
+  {
+    
+    nu = nuValues[i]
+    
+    directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+    values = paste("Eb_1_nu_", nu, "_kf_0p01_L0_0p125_homoggrowth", sep="")
+    
+    # Load the solutions
+    solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+    # Load the times
+    timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+    
+    solData <- NULL 
+    finalIndex = length(timesList$times)
+    
+    if (i == length(nuValues))
+    {
+      startIndex <- 6
+      solCount <- 10
+    }
+    else
+    {
+      startIndex <- 2
+      solCount <- 2
+    }
+    
+    for ( j in seq(startIndex, finalIndex, solCount) )
+    {
+      # Extract the solution, growth and time
+      sol <- solsList[[1]][[j]][[1]]
+      currentTime <- timesList$times[j]/maxTime
+      
+      # Update the solutions
+      solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+      solDataFrame$time = as.factor(currentTime)
+      solData <- rbind(solData, solDataFrame)
+      
+    }
+    
+    solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=0.75)
+  }
+  
+}
+
+tikz(file = "PlotRemodellingFoundationSelfContactVaryingEta.tex", standAlone = T, width = 5, height = 3)
+
+solPlot <- solPlot +  ylab('$y$') +   xlab('$x$') +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(maxNumSols/solCount + 2)) +
+  scale_x_continuous(expand = c(0, 0), limits=c(0, length(nuValues)*1.5 + 0.5))
+
+print(solPlot)
+dev.off()
+
+tools::texi2dvi('PlotRemodellingFoundationSelfContactVaryingEta.tex', pdf = T, clean = T)
+```
+
+As expected, the stress profiles for a remodelling foundation are very similar to those for an elastic foundation. A higher value of $\eta$ appears to smooth out the non-uniformities within the stresses. Below, we plot $n_x$, $n_y$, $n_3$ and $n_1$ for $\eta = 1$ and $\eta = 10$, respectively.
 
 ```{r plot remodelling foundation stress kf 0p001 nu 1, echo=FALSE, fig.align="center", warning=FALSE}
 directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
-values = "Eb_1_nu_1_kf_0p001_L0_0p125_homoggrowth"
+values = "Eb_1_nu_1_kf_0p01_L0_0p125_homoggrowth"
 
 # Load the solutions
 solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
@@ -491,401 +1235,155 @@ for ( i in seq(3, numSols, solCount) )
   # Extract the solution, growth and time
   sol <- solsList[[1]][[i]][[1]]
   currentTime = timesList[[1]][[i]]
-
+  
   # Update the solutions
   solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
   solDataFrame$time = toString(currentTime)
   solData <- rbind(solData, solDataFrame)
   
-  stressDataFrame <- data.frame(S=sol[1,], nX=sol[5,], nY=sol[6,], sigma=sqrt((sol[3,] - sol[2,])^2 + (sol[4,])^2))
+  stressDataFrame <- data.frame(S=sol[1,], nX=sol[5,], nY=sol[6,], sigma=sqrt((sol[3,] - sol[2,])^2 + (sol[4,])^2), n1=sol[6,]*cos(sol[7,]) - sol[5,]*sin(sol[7,]), n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,]))
   stressDataFrame$time = toString(currentTime)
   stressData <- rbind(stressData, stressDataFrame)
 }
 
 solPlotnX <- ggplot() +  geom_path(data=solData, aes(S, nX, color=time), size=0.75)  +  ylab(TeX('$n_x$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05)) 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05)) 
 
 solPlotnY <- ggplot() +  geom_path(data=solData, aes(S, -nY, color=time), size=0.75)  +  ylab(TeX('$n_y$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
 
 solPlotsigma <- ggplot() +  geom_path(data=stressData, aes(S, sigma, color=time), size=0.75)  +  ylab(TeX('$\\sigma$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(numSols/solCount)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
 
-ggarrange(solPlotnX, solPlotnY, solPlotsigma)
+solPlotn1 <- ggplot() +  geom_path(data=stressData, aes(S, n1, color=time), size=0.75)  +  ylab(TeX('$n_1$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotn3 <- ggplot() +  geom_path(data=stressData, aes(S, n3, color=time), size=0.75)  +  ylab(TeX('$n_3$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+ggarrange(solPlotnX, solPlotnY, solPlotn3, solPlotn1)
 ```
 
-The parameter that is clearly of most interest is the foundation relaxation parameter $\eta$. Here, we plot the final, pre-self-contact shape for various values of $\eta$. Increasing $\eta$ has the two-fold effect of increasing both the invagination length, as well as the bulge width, effectively keeping the aspect ratio constant as $\eta$ increases.
-```{r plot remodelling elastic foundation kf 0p001 compare nu, echo=FALSE, fig.align="center", warning=FALSE}
-directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
-directorynu0 = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearElasticFoundation/"
+As expected, the stress profiles for a remodelling foundation are very similar to those for an elastic foundation, with the stress being most concentrated at the tip of the invagination.
 
-valuesnu0 = "Eb_1_kf_0p001_L0_0p125_homoggrowth"
-valuesnu1 = "Eb_1_nu_1_kf_0p001_L0_0p125_homoggrowth"
-valuesnu10 = "Eb_1_nu_10_kf_0p001_L0_0p125_homoggrowth"
-valuesnu50 = "Eb_1_nu_50_kf_0p001_L0_0p125_homoggrowth"
+```{r plot remodelling foundation stress kf 0p001 nu 10, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+values = "Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth"
 
 # Load the solutions
-solsListnu0 <- readMat(paste(directorynu0, "sols_", valuesnu0, ".mat", sep=""))
-solsListnu1 <- readMat(paste(directory, "sols_", valuesnu1, ".mat", sep=""))
-solsListnu10 <- readMat(paste(directory, "sols_", valuesnu10, ".mat", sep=""))
-solsListnu50 <- readMat(paste(directory, "sols_", valuesnu50, ".mat", sep=""))
-
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
 # Load the times
-timesListnu0 <- readMat(paste(directorynu0, "times_", valuesnu0, ".mat", sep=""))
-timesListnu1 <- readMat(paste(directory, "times_", valuesnu1, ".mat", sep=""))
-timesListnu10 <- readMat(paste(directory, "times_", valuesnu10, ".mat", sep=""))
-timesListnu50 <- readMat(paste(directory, "times_", valuesnu50, ".mat", sep=""))
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
 
-numSolsnu0 <- length(solsListnu0[[1]])
-numSolsnu1 <- length(solsListnu1[[1]])
-numSolsnu10 <- length(solsListnu10[[1]])
-numSolsnu50 <- length(solsListnu50[[1]])
-
-solDatanu0 <- NULL
-solDatanu1 <- NULL # Create data frame for solutions
-solDatanu10 <- NULL # Create data frame for solutions
-solDatanu50 <- NULL # Create data frame for solutions
+numSols <- length(solsList[[1]])
+solData <- NULL # Create data frame for solutions
+stressData <- NULL
 
 # Some parameters
 solCount <- 3
 
+# # Plot solutions
+for ( i in seq(3, numSols, solCount) )
+{
+  # Extract the solution, growth and time
+  sol <- solsList[[1]][[i]][[1]]
+  currentTime = timesList[[1]][[i]]
+  
+  # Update the solutions
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time = toString(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+  stressDataFrame <- data.frame(S=sol[1,], nX=sol[5,], nY=sol[6,], sigma=sqrt((sol[3,] - sol[2,])^2 + (sol[4,])^2), n1=sol[6,]*cos(sol[7,]) - sol[5,]*sin(sol[7,]), n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,]))
+  stressDataFrame$time = toString(currentTime)
+  stressData <- rbind(stressData, stressDataFrame)
+}
+
+solPlotnX <- ggplot() +  geom_path(data=solData, aes(S, nX, color=time), size=0.75)  +  ylab(TeX('$n_x$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05)) 
+
+solPlotnY <- ggplot() +  geom_path(data=solData, aes(S, -nY, color=time), size=0.75)  +  ylab(TeX('$n_y$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotsigma <- ggplot() +  geom_path(data=stressData, aes(S, sigma, color=time), size=0.75)  +  ylab(TeX('$\\sigma$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotn1 <- ggplot() +  geom_path(data=stressData, aes(S, n1, color=time), size=0.75)  +  ylab(TeX('$n_1$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+solPlotn3 <- ggplot() +  geom_path(data=stressData, aes(S, n3, color=time), size=0.75)  +  ylab(TeX('$n_3$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(numSols/solCount)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
+
+ggarrange(solPlotnX, solPlotnY, solPlotn3, solPlotn1)
+```
+
+```{r plot comparison between foundations, echo=FALSE, fig.align="center", warning=FALSE}
+directoryElastic = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearElasticFoundation/"
+directorySLS = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+directoryRemodelling = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+valuesElastic = "Eb_1_kf_0p01_L0_0p125_homoggrowth"
+valuesSLS = "Eb_1_beta_0p5_nu_10_kf_0p01_L0_0p125_homoggrowth"
+valuesRemodelling = "Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth"
+
+# Load the solutions
+solsListElastic <- readMat(paste(directoryElastic, "sols_", valuesElastic, ".mat", sep=""))
+solsListSLS <- readMat(paste(directorySLS, "sols_", valuesSLS, ".mat", sep=""))
+solsListRemodelling <- readMat(paste(directoryRemodelling, "sols_", valuesRemodelling, ".mat", sep=""))
+
+# Load the times
+timesListElastic <- readMat(paste(directoryElastic, "times_", valuesElastic, ".mat", sep=""))
+timesListSLS <- readMat(paste(directorySLS, "times_", valuesSLS, ".mat", sep=""))
+timesListRemodelling <- readMat(paste(directoryRemodelling, "times_", valuesRemodelling, ".mat", sep=""))
+
+timeSample = 1.25
+indexElastic = match(timeSample, timesListElastic$times)
+indexSLS = match(timeSample, timesListSLS$times)
+indexRemodelling = match(timeSample, timesListRemodelling$times)
+
 # Extract the solution, growth and time
-solnu0 <- solsListnu0[[1]][[numSolsnu0]][[1]]
-currentTimenu0 = timesListnu0[[1]][[numSolsnu0]]
-                                   
-solnu1 <- solsListnu1[[1]][[numSolsnu1]][[1]]
-currentTimenu1 = timesListnu1[[1]][[numSolsnu1]]
+solElastic <- solsListElastic[[1]][[indexElastic]][[1]]
+solSLS <- solsListSLS[[1]][[indexSLS]][[1]]
+solRemodelling <- solsListRemodelling[[1]][[indexSLS]][[1]]
 
-solnu10 <- solsListnu10[[1]][[numSolsnu10]][[1]]
-currentTimenu10 = timesListnu10[[1]][[numSolsnu10]]
-
-solnu50 <- solsListnu50[[1]][[numSolsnu50]][[1]]
-currentTimenu50 = timesListnu50[[1]][[numSolsnu50]]
 
 # Update the solutions
+solDataElastic <- data.frame(S=solElastic[2,], x=solElastic[3,], y=solElastic[4,])
+solDataSLS <- data.frame(S=solSLS[2,], x=solSLS[3,], y=solSLS[4,])
+solDataRemodelling <- data.frame(S=solRemodelling[2,], x=solRemodelling[3,], y=solRemodelling[4,])
 
-solDataFramenu0 <- data.frame(S=solnu0[2,], x=solnu0[3,], y=solnu0[4,], nX=solnu0[5,], nY=solnu0[6,], theta=solnu0[7,], m=solnu0[8,])
-solDataFramenu0$time = toString(currentTimenu0)
-solDataFramenu0$eta = toString("0")
-solDatanu0 <- solDataFramenu0
 
-solDataFramenu1 <- data.frame(S=solnu1[2,], x=solnu1[3,], y=solnu1[4,], nX=solnu1[5,], nY=solnu1[6,], theta=solnu1[7,], m=solnu1[8,])
-solDataFramenu1$time = toString(currentTimenu1)
-solDataFramenu1$eta = toString("1")
-solDatanu1 <- solDataFramenu1
-
-solDataFramenu10 <- data.frame(S=solnu10[2,], x=solnu10[3,], y=solnu10[4,], nX=solnu10[5,], nY=solnu10[6,], theta=solnu10[7,], m=solnu10[8,])
-solDataFramenu10$time = toString(currentTimenu10)
-solDataFramenu10$eta = toString("10")
-solDatanu10 <- solDataFramenu10
-
-solDataFramenu50 <- data.frame(S=solnu50[2,], x=solnu50[3,], y=solnu50[4,], nX=solnu50[5,], nY=solnu50[6,], theta=solnu50[7,], m=solnu50[8,])
-solDataFramenu50$time = toString(currentTimenu50)
-solDataFramenu50$eta = toString("50")
-solDatanu50 <- solDataFramenu50
-
-## Add to gg plot
+# Plot the different graphs
 solPlot <- ggplot()
-solPlot <- solPlot + geom_path(data=solDatanu0, aes(x, -y, color=eta), size=0.75)  +  ylab(TeX('$y$')) +   xlab(TeX('$x$')) +
-            theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(-1.05, 2.05)) + 
-  scale_y_continuous(expand = c(0, 0), limits=c(-2.55, 0.05))
 
-solPlot <- solPlot + geom_path(data=solDatanu1, aes(x, -y, color=eta), size=0.75)
+solPlot <- solPlot + geom_path(data=solDataElastic, aes(x, -y), size=0.75)  
+solPlot <- solPlot + geom_path(data=solDataSLS, aes(x, -y + 6), size=0.75, linetype="dotted")  
+solPlot <- solPlot + geom_path(data=solDataRemodelling, aes(x, -y), size=0.75, linetype="dashed")  
 
-solPlot <- solPlot + geom_path(data=solDatanu10, aes(x, -y, color=eta), size=0.75)
+tikz(file = "PlotFoundationComparison.tex", standAlone = T, width = 5, height = 4)
 
-solPlot <- solPlot + geom_path(data=solDatanu50, aes(x, -y, color=eta), size=0.75)
 
-solPlot <- solPlot + scale_colour_manual(values=colorRampPalette(brewer.pal(4, "PuBu"))(4)) + labs(colour = "eta")
+solPlot <- solPlot +  ylab('$y$') +   xlab('$x$') + 
+  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
+  scale_x_continuous(expand = c(0, 0), limits=c(-0.05, 1.05))
 
-solPlot
+
+print(solPlot)
+dev.off()
+
+tools::texi2dvi('PlotFoundationComparison.tex', pdf = T, clean = T)
+
 ```
-
-### Curvature remodelling
-
-We now examine the effect of a remodelling intrinsic curvature, dictated by the remodelling parameter $\chi$. We first test the effect of curvature relaxation on a static, elastic foundation. As we increase $\chi$, we decrease the bending energy and hence the bending moment. This makes it energetically less favourable for the rod to invaginate, as it grows.
-
-```{r plot elastic foundation kf 0p001 compare chi, echo=FALSE, fig.align="center", warning=FALSE}
-directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearElasticFoundation/"
-directorynu0 = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/LinearElasticFoundation/"
-
-valuesnu0 = "Eb_1_kf_0p001_L0_0p125_homoggrowth"
-valuesnu1 = "Eb_1_kf_0p001_L0_0p125_homoggrowth_etaK_1"
-valuesnu10 = "Eb_1_kf_0p001_L0_0p125_homoggrowth_etaK_10"
-valuesnu50 = "Eb_1_kf_0p001_L0_0p125_homoggrowth_etaK_50"
-
-# Load the solutions
-solsListnu0 <- readMat(paste(directorynu0, "sols_", valuesnu0, ".mat", sep=""))
-solsListnu1 <- readMat(paste(directory, "sols_", valuesnu1, ".mat", sep=""))
-solsListnu10 <- readMat(paste(directory, "sols_", valuesnu10, ".mat", sep=""))
-solsListnu50 <- readMat(paste(directory, "sols_", valuesnu50, ".mat", sep=""))
-
-# Load the times
-timesListnu0 <- readMat(paste(directorynu0, "times_", valuesnu0, ".mat", sep=""))
-timesListnu1 <- readMat(paste(directory, "times_", valuesnu1, ".mat", sep=""))
-timesListnu10 <- readMat(paste(directory, "times_", valuesnu10, ".mat", sep=""))
-timesListnu50 <- readMat(paste(directory, "times_", valuesnu50, ".mat", sep=""))
-
-# Load the intrinsic curvatures
-intrinsCurvsListnu1 <- readMat(paste(directory, "intrinscurvs_", valuesnu1, ".mat", sep=""))
-intrinsCurvsListnu10 <- readMat(paste(directory, "intrinscurvs_", valuesnu10, ".mat", sep=""))
-intrinsCurvsListnu50 <- readMat(paste(directory, "intrinscurvs_", valuesnu50, ".mat", sep=""))
-
-numSolsnu0 <- length(solsListnu0[[1]])
-numSolsnu1 <- length(solsListnu1[[1]])
-numSolsnu10 <- length(solsListnu10[[1]])
-numSolsnu50 <- length(solsListnu50[[1]])
-
-solData <- NULL # Create data frame for solutions
-stressData <- NULL # Create data frame for stress
-uHatData <- NULL # Create data frame for intrinsic curvature
-
-# Extract the solution, time, and intrinsic curvature
-solnu0 <- solsListnu0[[1]][[numSolsnu0]][[1]]
-currentTimenu0 = timesListnu0[[1]][[numSolsnu0]]
-
-solnu1 <- solsListnu1[[1]][[numSolsnu1]][[1]]
-currentTimenu1 = timesListnu1[[1]][[numSolsnu1]]
-intrinsCurvnu1 = intrinsCurvsListnu1[[1]][[numSolsnu1]][[1]]
-
-solnu10 <- solsListnu10[[1]][[numSolsnu10]][[1]]
-currentTimenu10 = timesListnu10[[1]][[numSolsnu10]]
-intrinsCurvnu10 = intrinsCurvsListnu10[[1]][[numSolsnu10]][[1]]
-
-solnu50 <- solsListnu50[[1]][[numSolsnu50]][[1]]
-currentTimenu50 = timesListnu50[[1]][[numSolsnu50]]
-intrinsCurvnu50 = intrinsCurvsListnu50[[1]][[numSolsnu50]][[1]]
-
-# Update the solutions
-
-solDataFramenu0 <- data.frame(S=solnu0[2,], x=solnu0[3,], y=solnu0[4,], nX=solnu0[5,], nY=solnu0[6,], theta=solnu0[7,], m=solnu0[8,])
-solDataFramenu0$time = toString(currentTimenu0)
-solDataFramenu0$chi = toString("0")
-solData <- rbind(solData, solDataFramenu0)
-
-solDataFramenu1 <- data.frame(S=solnu1[2,], x=solnu1[3,], y=solnu1[4,], nX=solnu1[5,], nY=solnu1[6,], theta=solnu1[7,], m=solnu1[8,])
-solDataFramenu1$time = toString(currentTimenu1)
-solDataFramenu1$chi = toString("1")
-solData <- rbind(solData, solDataFramenu1)
-
-solDataFramenu10 <- data.frame(S=solnu10[2,], x=solnu10[3,], y=solnu10[4,], nX=solnu10[5,], nY=solnu10[6,], theta=solnu10[7,], m=solnu10[8,])
-solDataFramenu10$time = toString(currentTimenu10)
-solDataFramenu10$chi = toString("10")
-solData <- rbind(solData, solDataFramenu10)
-
-solDataFramenu50 <- data.frame(S=solnu50[2,], x=solnu50[3,], y=solnu50[4,], nX=solnu50[5,], nY=solnu50[6,], theta=solnu50[7,], m=solnu50[8,])
-solDataFramenu50$time = toString(currentTimenu50)
-solDataFramenu50$chi = toString("50")
-solData <- rbind(solData, solDataFramenu50)
-
-# Collate the stress solutions
-stressDataFramenu0 <- data.frame(S=solnu0[2,], nX=solnu0[5,], nY=solnu0[6,], sigma=sqrt((solnu0[3,] - solnu0[2,])^2 + (solnu0[4,])^2))
-stressDataFramenu0$time = toString(currentTimenu0)
-stressDataFramenu0$chi = toString("0")
-stressData <- rbind(stressData, stressDataFramenu0)
-
-stressDataFramenu1 <- data.frame(S=solnu1[2,], nX=solnu1[5,], nY=solnu1[6,], sigma=sqrt((solnu1[3,] - solnu1[2,])^2 + (solnu1[4,])^2))
-stressDataFramenu1$time = toString(currentTimenu1)
-stressDataFramenu1$chi = toString("1")
-stressData <- rbind(stressData, stressDataFramenu1)
-
-stressDataFramenu10 <- data.frame(S=solnu10[2,], nX=solnu10[5,], nY=solnu10[6,], sigma=sqrt((solnu10[3,] - solnu10[2,])^2 + (solnu10[4,])^2))
-stressDataFramenu10$time = toString(currentTimenu10)
-stressDataFramenu10$chi = toString("10")
-stressData <- rbind(stressData, stressDataFramenu10)
-
-stressDataFramenu50 <- data.frame(S=solnu50[2,], nX=solnu50[5,], nY=solnu50[6,], sigma=sqrt((solnu50[3,] - solnu50[2,])^2 + (solnu50[4,])^2))
-stressDataFramenu50$time = toString(currentTimenu50)
-stressDataFramenu50$chi = toString("50")
-stressData <- rbind(stressData, stressDataFramenu50)
-
-# Collate the intrinsic curvature solutions
-intrinsCurvDataFramenu0 <- data.frame(S=solnu0[1,], uHat=0*solnu0[2,])
-intrinsCurvDataFramenu0$time = toString(currentTimenu0)
-intrinsCurvDataFramenu0$chi = toString("0")
-uHatData <- rbind(uHatData, intrinsCurvDataFramenu0)
-
-intrinsCurvDataFramenu1 <- data.frame(S=intrinsCurvnu1[1,], uHat=intrinsCurvnu1[2,])
-intrinsCurvDataFramenu1$time = toString(currentTimenu1)
-intrinsCurvDataFramenu1$chi = toString("1")
-uHatData <- rbind(uHatData, intrinsCurvDataFramenu1)
-
-intrinsCurvDataFramenu10 <- data.frame(S=intrinsCurvnu10[1,], uHat=intrinsCurvnu10[2,])
-intrinsCurvDataFramenu10$time = toString(currentTimenu10)
-intrinsCurvDataFramenu10$chi = toString("10")
-uHatData <- rbind(uHatData, intrinsCurvDataFramenu10)
-
-intrinsCurvDataFramenu50 <- data.frame(S=intrinsCurvnu50[1,], uHat=intrinsCurvnu50[2,])
-intrinsCurvDataFramenu50$time = toString(currentTimenu50)
-intrinsCurvDataFramenu50$chi = toString("50")
-uHatData <- rbind(uHatData, intrinsCurvDataFramenu50)
-
-## Add to gg plot
-solPlot <- ggplot()
-solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=chi), size=0.75)  +  ylab(TeX('$y$')) +   xlab(TeX('$x$')) +
-            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(-0.05, 1.05)) + 
-  scale_y_continuous(expand = c(0, 0), limits=c(-1.05, 0.55)) + scale_colour_manual(values=colorRampPalette(brewer.pal(4, "PuBu"))(4)) + labs(colour = "chi")
-
-mPlot <- ggplot() +  geom_path(data=solData, aes(S, m, color=chi), size=0.75)  +  ylab(TeX('$m$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(4)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
-
-stressPlot <- ggplot() +  geom_path(data=stressData, aes(S, sigma, color=chi), size=0.75)  +  ylab(TeX('$\\sigma$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(4)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
-
-uHatPlot <- ggplot() +  geom_path(data=uHatData, aes(S, uHat, color=chi), size=0.75)  +  ylab(TeX('$\\hat{u}$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(4)) +
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
-
-ggarrange(solPlot, mPlot, stressPlot, uHatPlot, ncol=2, nrow=2)
-```
-
-In comparison, for a remodelling foundation, the results appear to be largely similar. For a non-zero value of $\eta$, the deepened invagination negates some of the effect of increased $\chi$.
-
-```{r plot remodelling foundation kf 0p001 compare chi, echo=FALSE, fig.align="center", warning=FALSE}
-directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
-directorynu0 = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
-
-valuesnu0 = "Eb_1_nu_1_kf_0p001_L0_0p125_homoggrowth"
-valuesnu1 = "Eb_1_nu_1_kf_0p001_L0_0p125_homoggrowth_etaK_1"
-valuesnu10 = "Eb_1_nu_1_kf_0p001_L0_0p125_homoggrowth_etaK_10"
-valuesnu50 = "Eb_1_nu_1_kf_0p001_L0_0p125_homoggrowth_etaK_50"
-
-# Load the solutions
-solsListnu0 <- readMat(paste(directorynu0, "sols_", valuesnu0, ".mat", sep=""))
-solsListnu1 <- readMat(paste(directory, "sols_", valuesnu1, ".mat", sep=""))
-solsListnu10 <- readMat(paste(directory, "sols_", valuesnu10, ".mat", sep=""))
-solsListnu50 <- readMat(paste(directory, "sols_", valuesnu50, ".mat", sep=""))
-
-# Load the times
-timesListnu0 <- readMat(paste(directorynu0, "times_", valuesnu0, ".mat", sep=""))
-timesListnu1 <- readMat(paste(directory, "times_", valuesnu1, ".mat", sep=""))
-timesListnu10 <- readMat(paste(directory, "times_", valuesnu10, ".mat", sep=""))
-timesListnu50 <- readMat(paste(directory, "times_", valuesnu50, ".mat", sep=""))
-
-# Load the intrinsic curvatures
-intrinsCurvsListnu1 <- readMat(paste(directory, "intrinscurvs_", valuesnu1, ".mat", sep=""))
-intrinsCurvsListnu10 <- readMat(paste(directory, "intrinscurvs_", valuesnu10, ".mat", sep=""))
-intrinsCurvsListnu50 <- readMat(paste(directory, "intrinscurvs_", valuesnu50, ".mat", sep=""))
-
-numSolsnu0 <- length(solsListnu0[[1]])
-numSolsnu1 <- length(solsListnu1[[1]])
-numSolsnu10 <- length(solsListnu10[[1]])
-numSolsnu50 <- length(solsListnu50[[1]])
-
-solData <- NULL # Create data frame for solutions
-stressData <- NULL # Create data frame for stress
-uHatData <- NULL # Create data frame for intrinsic curvature
-
-# Extract the solution, time, and intrinsic curvature
-solnu0 <- solsListnu0[[1]][[numSolsnu0]][[1]]
-currentTimenu0 = timesListnu0[[1]][[numSolsnu0]]
-
-solnu1 <- solsListnu1[[1]][[numSolsnu1]][[1]]
-currentTimenu1 = timesListnu1[[1]][[numSolsnu1]]
-intrinsCurvnu1 = intrinsCurvsListnu1[[1]][[numSolsnu1]][[1]]
-
-solnu10 <- solsListnu10[[1]][[numSolsnu10]][[1]]
-currentTimenu10 = timesListnu10[[1]][[numSolsnu10]]
-intrinsCurvnu10 = intrinsCurvsListnu10[[1]][[numSolsnu10]][[1]]
-
-solnu50 <- solsListnu50[[1]][[numSolsnu50]][[1]]
-currentTimenu50 = timesListnu50[[1]][[numSolsnu50]]
-intrinsCurvnu50 = intrinsCurvsListnu50[[1]][[numSolsnu50]][[1]]
-
-# Update the solutions
-
-solDataFramenu0 <- data.frame(S=solnu0[2,], x=solnu0[3,], y=solnu0[4,], nX=solnu0[5,], nY=solnu0[6,], theta=solnu0[7,], m=solnu0[8,])
-solDataFramenu0$time = toString(currentTimenu0)
-solDataFramenu0$chi = toString("0")
-solData <- rbind(solData, solDataFramenu0)
-
-solDataFramenu1 <- data.frame(S=solnu1[2,], x=solnu1[3,], y=solnu1[4,], nX=solnu1[5,], nY=solnu1[6,], theta=solnu1[7,], m=solnu1[8,])
-solDataFramenu1$time = toString(currentTimenu1)
-solDataFramenu1$chi = toString("1")
-solData <- rbind(solData, solDataFramenu1)
-
-solDataFramenu10 <- data.frame(S=solnu10[2,], x=solnu10[3,], y=solnu10[4,], nX=solnu10[5,], nY=solnu10[6,], theta=solnu10[7,], m=solnu10[8,])
-solDataFramenu10$time = toString(currentTimenu10)
-solDataFramenu10$chi = toString("10")
-solData <- rbind(solData, solDataFramenu10)
-
-solDataFramenu50 <- data.frame(S=solnu50[2,], x=solnu50[3,], y=solnu50[4,], nX=solnu50[5,], nY=solnu50[6,], theta=solnu50[7,], m=solnu50[8,])
-solDataFramenu50$time = toString(currentTimenu50)
-solDataFramenu50$chi = toString("50")
-solData <- rbind(solData, solDataFramenu50)
-
-# Collate the stress solutions
-stressDataFramenu0 <- data.frame(S=solnu0[2,], nX=solnu0[5,], nY=solnu0[6,], sigma=sqrt((solnu0[3,] - solnu0[2,])^2 + (solnu0[4,])^2))
-stressDataFramenu0$time = toString(currentTimenu0)
-stressDataFramenu0$chi = toString("0")
-stressData <- rbind(stressData, stressDataFramenu0)
-
-stressDataFramenu1 <- data.frame(S=solnu1[2,], nX=solnu1[5,], nY=solnu1[6,], sigma=sqrt((solnu1[3,] - solnu1[2,])^2 + (solnu1[4,])^2))
-stressDataFramenu1$time = toString(currentTimenu1)
-stressDataFramenu1$chi = toString("1")
-stressData <- rbind(stressData, stressDataFramenu1)
-
-stressDataFramenu10 <- data.frame(S=solnu10[2,], nX=solnu10[5,], nY=solnu10[6,], sigma=sqrt((solnu10[3,] - solnu10[2,])^2 + (solnu10[4,])^2))
-stressDataFramenu10$time = toString(currentTimenu10)
-stressDataFramenu10$chi = toString("10")
-stressData <- rbind(stressData, stressDataFramenu10)
-
-stressDataFramenu50 <- data.frame(S=solnu50[2,], nX=solnu50[5,], nY=solnu50[6,], sigma=sqrt((solnu50[3,] - solnu50[2,])^2 + (solnu50[4,])^2))
-stressDataFramenu50$time = toString(currentTimenu50)
-stressDataFramenu50$chi = toString("50")
-stressData <- rbind(stressData, stressDataFramenu50)
-
-# Collate the intrinsic curvature solutions
-intrinsCurvDataFramenu0 <- data.frame(S=solnu0[1,], uHat=0*solnu0[2,])
-intrinsCurvDataFramenu0$time = toString(currentTimenu0)
-intrinsCurvDataFramenu0$chi = toString("0")
-uHatData <- rbind(uHatData, intrinsCurvDataFramenu0)
-
-intrinsCurvDataFramenu1 <- data.frame(S=intrinsCurvnu1[1,], uHat=intrinsCurvnu1[2,])
-intrinsCurvDataFramenu1$time = toString(currentTimenu1)
-intrinsCurvDataFramenu1$chi = toString("1")
-uHatData <- rbind(uHatData, intrinsCurvDataFramenu1)
-
-intrinsCurvDataFramenu10 <- data.frame(S=intrinsCurvnu10[1,], uHat=intrinsCurvnu10[2,])
-intrinsCurvDataFramenu10$time = toString(currentTimenu10)
-intrinsCurvDataFramenu10$chi = toString("10")
-uHatData <- rbind(uHatData, intrinsCurvDataFramenu10)
-
-intrinsCurvDataFramenu50 <- data.frame(S=intrinsCurvnu50[1,], uHat=intrinsCurvnu50[2,])
-intrinsCurvDataFramenu50$time = toString(currentTimenu50)
-intrinsCurvDataFramenu50$chi = toString("50")
-uHatData <- rbind(uHatData, intrinsCurvDataFramenu50)
-
-## Add to gg plot
-solPlot <- ggplot()
-solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=chi), size=0.75)  +  ylab(TeX('$y$')) +   xlab(TeX('$x$')) +
-            theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(-0.05, 1.05)) + 
-  scale_y_continuous(expand = c(0, 0), limits=c(-1.05, 0.55)) + scale_colour_manual(values=colorRampPalette(brewer.pal(4, "PuBu"))(4)) + labs(colour = "chi")
-
-mPlot <- ggplot() +  geom_path(data=solData, aes(S, m, color=chi), size=0.75)  +  ylab(TeX('$m$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(4)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
-
-stressPlot <- ggplot() +  geom_path(data=stressData, aes(S, sigma, color=chi), size=0.75)  +  ylab(TeX('$\\sigma$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + 
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(4)) + 
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
-
-uHatPlot <- ggplot() +  geom_path(data=uHatData, aes(S, uHat, color=chi), size=0.75)  +  ylab(TeX('$\\hat{u}$')) +   xlab(TeX('$S_0$')) +  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
-  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "PuBu"))(4)) +
-            scale_x_continuous(expand = c(0, 0), limits=c(0,1.05))
-
-ggarrange(solPlot, mPlot, stressPlot, uHatPlot, ncol=2, nrow=2)
-```
-
-<!-- ## Comparisons  -->
 
 # Conclusions
 Of all the foundation laws considered, the 'plastic' remodelling foundation law appears to have the greatest promise in producing an invagination length akin to that of the crypt (a ratio of up to five-to-one, in terms of length of crypt to width of deformation). However, in the case of homogeneous growth and stiffness, we note that this law maintains a constant aspect ratio for all values of the relaxation parameter $\eta$. Therefore, it makes sense to couple this foundation law with heterogeneities in bending stiffness, say.

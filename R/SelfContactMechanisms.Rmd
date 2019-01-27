@@ -1,0 +1,303 @@
+---
+title: "Exploring self-contact"
+author: "Axel Almet"
+date: "6 December 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(cowplot)
+library(R.matlab)
+library(latex2exp)
+library(RColorBrewer)
+library(ggpubr)
+library(plotly)
+library(tikzDevice)
+```
+
+```{r plot self-contact with no constraint, echo=FALSE, fig.align="center", warning=FALSE}
+
+directory <- "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+values <- "Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_post"
+
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+contactMomentsList <- readMat(paste(directory, "contactMoments_", values, ".mat", sep=""))
+
+
+times <- timesList$newTimes
+contactMoments <- contactMomentsList$momentAtContact
+
+momentData <- data.frame(t=times[1,] - times[[1]], moment=contactMoments[1,])
+
+ tikz(file = "ContactMomentWithNoConstraint.tex", standAlone = T, width = 5, height = 4)
+
+(momentPlot <- ggplot() + geom_path(data=momentData, aes(t, moment), size=1.0) + ylab('$m(s_c)$') + xlab('Time from self-contact'))
+ 
+ dev.off()
+ 
+ tools::texi2dvi("ContactMomentWithNoConstraint.tex", pdf = T, clean = T)
+
+
+maxTime <- times[length(times)]
+
+solData <- NULL
+solPlot <- ggplot()
+for ( j in seq(1, length(times), 1) )
+{
+  
+  currentTime <- times[j]/maxTime
+  sol <- solsList[[1]][[j]][[1]]
+  
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time <- as.factor(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+ tikz(file = "SelfContactShapeWithNoConstraint.tex", standAlone = T, width = 5, height = 4)
+ 
+(solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=1.0) + geom_path(data=solData, aes(-x, -y, color=time), size=1.0) + 
+scale_x_continuous(expand = c(0, 0), limits=c(-1.05, 1.05)) + ylab('$y$') +   xlab('$x$') + 
+  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+ scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(length(times))))
+
+ 
+ dev.off()
+ 
+ tools::texi2dvi("SelfContactShapeWithNoConstraint.tex", pdf = T, clean = T)
+
+```
+
+```{r plot self-contact with area constraints, echo=FALSE, fig.align="center", warning=FALSE}
+
+directory <- "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+values <- "Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_post_constarea"
+
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+contactMomentsList <- readMat(paste(directory, "contactMoments_", values, ".mat", sep=""))
+
+
+times <- timesList$newTimes
+contactMoments <- contactMomentsList$momentAtContact
+
+momentData <- data.frame(t=times[1,] - times[[1]], moment=contactMoments[1,])
+
+ tikz(file = "ContactMomentWithConstantArea.tex", standAlone = T, width = 5, height = 4)
+
+(momentPlot <- ggplot() + geom_path(data=momentData, aes(t, moment), size=1.0) + ylab('$m(s_c)$') + xlab('Time from self-contact'))
+ 
+ dev.off()
+ 
+ tools::texi2dvi("ContactMomentWithConstantArea.tex", pdf = T, clean = T)
+
+
+maxTime <- times[length(times)]
+
+solData <- NULL
+solPlot <- ggplot()
+for ( j in seq(1, length(times), 1) )
+{
+  
+  currentTime <- times[j]/maxTime
+  sol <- solsList[[1]][[j]][[1]]
+  
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time <- as.factor(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+ tikz(file = "SelfContactShapeWithConstantArea.tex", standAlone = T, width = 5, height = 4)
+ 
+(solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=1.0) + geom_path(data=solData, aes(-x, -y, color=time), size=1.0) + 
+scale_x_continuous(expand = c(0, 0), limits=c(-1.05, 1.05)) + ylab('$y$') +   xlab('$x$') + 
+  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+ scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(length(times))))
+
+ 
+ dev.off()
+ 
+ tools::texi2dvi("SelfContactShapeWithConstantArea.tex", pdf = T, clean = T)
+
+```
+
+```{r plot self-contact with repulsion q 1, echo=FALSE, fig.align="center", warning=FALSE}
+
+directory <- "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+values <- "Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_post_repulsion_Q_1_N_2"
+
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+contactMomentsList <- readMat(paste(directory, "contactMoments_", values, ".mat", sep=""))
+
+
+times <- timesList$newTimes
+contactMoments <- contactMomentsList$momentAtContact
+
+momentData <- data.frame(t=times[1,] - times[[1]], moment=contactMoments[1,])
+
+ tikz(file = "ContactMomentWithRepulsionQ1N2.tex", standAlone = T, width = 5, height = 4)
+
+(momentPlot <- ggplot() + geom_path(data=momentData, aes(t, moment), size=1.0) + ylab('$m(s_c)$') + xlab('Time from self-contact'))
+ 
+ dev.off()
+ 
+ tools::texi2dvi("ContactMomentWithRepulsionQ1N2.tex", pdf = T, clean = T)
+
+
+maxTime <- times[length(times)]
+
+solData <- NULL
+solPlot <- ggplot()
+for ( j in seq(1, length(times), 1) )
+{
+  
+  currentTime <- times[j]/maxTime
+  sol <- solsList[[1]][[j]][[1]]
+  
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time <- as.factor(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+ tikz(file = "SelfContactShapeWithRepulsionQ1N2.tex", standAlone = T, width = 5, height = 4)
+ 
+(solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=1.0) + geom_path(data=solData, aes(-x, -y, color=time), size=1.0) + 
+scale_x_continuous(expand = c(0, 0), limits=c(-1.05, 1.05)) + ylab('$y$') +   xlab('$x$') + 
+  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+ scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(length(times))))
+
+ 
+ dev.off()
+ 
+ tools::texi2dvi("SelfContactShapeWithRepulsionQ1N2.tex", pdf = T, clean = T)
+
+```
+
+```{r plot self-contact with repulsion q 5, echo=FALSE, fig.align="center", warning=FALSE}
+
+directory <- "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+values <- "Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_post_repulsion_Q_5_N_2"
+
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+contactMomentsList <- readMat(paste(directory, "contactMoments_", values, ".mat", sep=""))
+
+
+times <- timesList$newTimes
+contactMoments <- contactMomentsList$momentAtContact
+
+momentData <- data.frame(t=times[1,] - times[[1]], moment=contactMoments[1,])
+
+ tikz(file = "ContactMomentWithRepulsionQ5N2.tex", standAlone = T, width = 5, height = 4)
+
+(momentPlot <- ggplot() + geom_path(data=momentData, aes(t, moment), size=1.0) + ylab('$m(s_c)$') + xlab('Time from self-contact'))
+ 
+ dev.off()
+ 
+ tools::texi2dvi("ContactMomentWithRepulsionQ5N2.tex", pdf = T, clean = T)
+
+
+maxTime <- times[length(times)]
+
+solData <- NULL
+solPlot <- ggplot()
+for ( j in seq(1, length(times), 1) )
+{
+  
+  currentTime <- times[j]/maxTime
+  sol <- solsList[[1]][[j]][[1]]
+  
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time <- as.factor(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+ tikz(file = "SelfContactShapeWithRepulsionQ5N2.tex", standAlone = T, width = 5, height = 4)
+ 
+(solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=1.0) + geom_path(data=solData, aes(-x, -y, color=time), size=1.0) + 
+scale_x_continuous(expand = c(0, 0), limits=c(-1.05, 1.05)) + ylab('$y$') +   xlab('$x$') + 
+  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+ scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(length(times))))
+
+ 
+ dev.off()
+ 
+ tools::texi2dvi("SelfContactShapeWithRepulsionQ5N2.tex", pdf = T, clean = T)
+
+```
+
+```{r plot self-contact with repulsion q 10, echo=FALSE, fig.align="center", warning=FALSE}
+
+directory <- "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+values <- "Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_post_repulsion_Q_10_N_2"
+
+solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+
+timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+contactMomentsList <- readMat(paste(directory, "contactMoments_", values, ".mat", sep=""))
+
+
+times <- timesList$newTimes
+contactMoments <- contactMomentsList$momentAtContact
+
+momentData <- data.frame(t=times[1,] - times[[1]], moment=contactMoments[1,])
+
+ tikz(file = "ContactMomentWithRepulsionQ10N2.tex", standAlone = T, width = 5, height = 4)
+
+(momentPlot <- ggplot() + geom_path(data=momentData, aes(t, moment), size=1.0) + ylab('$m(s_c)$') + xlab('Time from self-contact'))
+ 
+ dev.off()
+ 
+ tools::texi2dvi("ContactMomentWithRepulsionQ10N2.tex", pdf = T, clean = T)
+
+
+maxTime <- times[length(times)]
+
+solData <- NULL
+solPlot <- ggplot()
+for ( j in seq(1, length(times), 1) )
+{
+  
+  currentTime <- times[j]/maxTime
+  sol <- solsList[[1]][[j]][[1]]
+  
+  solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,])
+  solDataFrame$time <- as.factor(currentTime)
+  solData <- rbind(solData, solDataFrame)
+  
+}
+
+ tikz(file = "SelfContactShapeWithRepulsionQ10N2.tex", standAlone = T, width = 5, height = 4)
+ 
+(solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=time), size=1.0) + geom_path(data=solData, aes(-x, -y, color=time), size=1.0) + 
+scale_x_continuous(expand = c(0, 0), limits=c(-1.05, 1.05)) + ylab('$y$') +   xlab('$x$') + 
+  theme(legend.position="none", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+ scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(length(times))))
+
+ 
+ dev.off()
+ 
+ tools::texi2dvi("SelfContactShapeWithRepulsionQ10N2.tex", pdf = T, clean = T)
+
+```

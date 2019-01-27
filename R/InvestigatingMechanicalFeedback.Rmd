@@ -1,0 +1,1013 @@
+---
+title: "Investigating Mechanical Feedback"
+author: "Axel Almet"
+date: "26 October 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(cowplot)
+library(R.matlab)
+library(latex2exp)
+library(RColorBrewer)
+library(ggpubr)
+library(plotly)
+library(tikzDevice)
+```
+
+# Introduction
+
+We investigate the effect of incorporating mechanical feedback into two material properties: growth and mechanical stiffness. 
+
+### Mechanical feedback in growth---additive or multiplicative?
+
+In the literature, it has been shown that tension within epithelial tissue can promote tissue growth through proliferation, while excessive compression inhibits growth, which is generally referred to as contact inhibition. We consider a growth law that describes the regulation of growth. This can be incorporated in two different ways. Either, we say that the axial stress directly promotes or inhibits growth, described by the following law:
+\begin{align}
+\frac{\dot{\gamma}}{\gamma} = W(s) + \mu(n_3 - n_3^*),
+\end{align}
+or, we can say that axial stress modulates the effect of Wnt signalling on growth:
+\begin{align}
+\frac{\dot{\gamma}}{\gamma} = W(s)\left[1 + \mu(n_3 - n_3^*)\right].
+\end{align}
+In both equations, $n_3$ is the axial stress within the rod. To model the *relative* change in stress over time, we consider a remodelling equation for the target stress $n_3^*$,
+\begin{align}
+\dot{n_3^*} = \eta(n_3 - n_3^*).
+\end{align}
+Here, rather than prescribe $n_3^* = 0$, we set $n_3^*(0)$ to be the critical buckling stress, which can be determined from a linear stability analysis.
+
+<!-- ## Heterogenous stiffness -->
+
+<!-- These two plots compare the shapes at $t = 0.1,\ 1, 2$ days for when $E_b = E_b(S_0)$ (left) and $E_b = E_b(s)$ (right). Despite the remodelling of stiffness in the latter case, the differences in morphology are almost negligible. Here, $\sigma_E = 0.16$. -->
+<!-- ```{r plot shape for remodelling foundation kf 0p01 nu 10 variable stiffness with different parametrisations, echo=FALSE, fig.align="center", warning=FALSE} -->
+<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- valuesCurrent = "Eb_0p5_sigmaE_current_2w_nu_10_kf_0p01_L0_0p125_homoggrowth" -->
+<!-- valuesInit = "Eb_0p5_sigmaE_init_2w_nu_10_kf_0p01_L0_0p125_homoggrowth" -->
+
+<!-- timeSamples = c(0.1, 1.0, 2.0) -->
+<!-- solPlot <- NULL -->
+
+<!-- # Load the solutions -->
+<!-- solsListInit <- readMat(paste(directory, "sols_", valuesInit, ".mat", sep="")) -->
+<!-- timesListInit <- readMat(paste(directory, "times_", valuesInit, ".mat", sep="")) -->
+
+<!-- dt <- timesListInit$times[2] - timesListInit$times[1] -->
+
+<!-- numSolsInit <- length(solsListInit[[1]]) -->
+<!-- solDataInit <- NULL # Create data frame for solutions -->
+
+<!-- # Plot solutions -->
+<!-- for ( i in seq(1, length(timeSamples), 1) ) -->
+<!-- { -->
+
+<!--   solDataFrame <- NULL -->
+<!--   time = timeSamples[i] -->
+<!--   index = match(time, timesListInit$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsListInit[[1]][[index]][[1]] -->
+
+<!--   # Update the solutions -->
+<!--   solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], Eb=sol[9,]) -->
+<!--   solDataFrame$time = time -->
+<!--   solDataInit <- rbind(solDataInit, solDataFrame) -->
+
+<!-- } -->
+
+<!-- # Load the solutions -->
+<!-- solsListCurrent <- readMat(paste(directory, "sols_", valuesCurrent, ".mat", sep="")) -->
+<!-- gammasListCurrent <- readMat(paste(directory, "gamma_", valuesCurrent, ".mat", sep="")) -->
+<!-- # Load the times -->
+<!-- timesListCurrent <- readMat(paste(directory, "times_", valuesCurrent, ".mat", sep="")) -->
+
+<!-- dt <- timesListCurrent$times[2] - timesListCurrent$times[1] -->
+
+<!-- numSolsCurrent <- length(solsListCurrent[[1]]) -->
+<!-- solDataCurrent <- NULL # Create data frame for solutions -->
+<!-- gammaDataCurrent <- NULL -->
+
+<!-- # Plot solutions -->
+<!-- for ( i in seq(1, length(timeSamples), 1) ) -->
+<!-- { -->
+
+<!--   solDataFrame <- NULL -->
+<!--   time = timeSamples[i] -->
+<!--   index = match(time, timesListCurrent$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsListCurrent[[1]][[index]][[1]] -->
+
+<!--   # Update the solutions -->
+<!--   solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + 1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], Eb=sol[9,], n3=(sol[7,]) + sol[6,]*sin(sol[7,])) -->
+<!--   solDataFrame$time = time -->
+<!--   solDataCurrent <- rbind(solDataCurrent, solDataFrame) -->
+<!-- } -->
+
+<!-- tikz(file = "PlotHeterogeneousRodStiffnessShapeDifferentArcLengths.tex", standAlone = T, width = 4, height = 3) -->
+
+<!-- solPlot <- ggplot() + geom_path(data=solDataInit, aes(x, -y, color=Eb), size=1.0)  + -->
+<!--   geom_path(data=solDataCurrent, aes(x, -y, color=Eb), size=1.0) + -->
+<!--   ylab('$y$') +   xlab('$x$') + -->
+<!--   theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + -->
+<!--   scale_x_continuous(expand = c(0, 0), limits=c(-0.0, 2.55)) + -->
+<!--   scale_y_continuous(expand = c(0, 0), limits=c(-1.55, 0.15)) + -->
+<!--   scale_colour_gradient(name = "$E_b$", limits=c(0.5, 1), breaks=c(0.5, 1), low="#a6611a", high="#80cdc1") -->
+
+<!-- print(solPlot) -->
+<!-- dev.off() -->
+
+<!-- tools::texi2dvi('PlotHeterogeneousRodStiffnessShapeDifferentArcLengths.tex', pdf = T, clean = T) -->
+
+<!-- ``` -->
+
+<!-- We plot the same as above, but now for $\sigma_E = 0.4$. -->
+<!-- ```{r plot shape for remodelling foundation kf 0p01 nu 10 sigmaE 5w variable stiffness with different parametrisations, echo=FALSE, fig.align="center", warning=FALSE} -->
+<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- valuesCurrent = "Eb_0p5_sigmaE_current_5w_nu_10_kf_0p01_L0_0p125_homoggrowth" -->
+<!-- valuesInit = "Eb_0p5_sigmaE_init_5w_nu_10_kf_0p01_L0_0p125_homoggrowth" -->
+
+<!-- timeSamples = c(0.1, 1.0, 2.0) -->
+<!-- solPlot <- NULL -->
+
+<!-- # Load the solutions -->
+<!-- solsListInit <- readMat(paste(directory, "sols_", valuesInit, ".mat", sep="")) -->
+<!-- timesListInit <- readMat(paste(directory, "times_", valuesInit, ".mat", sep="")) -->
+
+<!-- dt <- timesListInit$times[2] - timesListInit$times[1] -->
+
+<!-- numSolsInit <- length(solsListInit[[1]]) -->
+<!-- solDataInit <- NULL # Create data frame for solutions -->
+
+<!-- # Plot solutions -->
+<!-- for ( i in seq(1, length(timeSamples), 1) ) -->
+<!-- { -->
+
+<!--   solDataFrame <- NULL -->
+<!--   time = timeSamples[i] -->
+<!--   index = match(time, timesListInit$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsListInit[[1]][[index]][[1]] -->
+
+<!--   # Update the solutions -->
+<!--   solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], Eb=sol[9,]) -->
+<!--   solDataFrame$time = time -->
+<!--   solDataInit <- rbind(solDataInit, solDataFrame) -->
+
+<!-- } -->
+
+<!-- # Load the solutions -->
+<!-- solsListCurrent <- readMat(paste(directory, "sols_", valuesCurrent, ".mat", sep="")) -->
+<!-- gammasListCurrent <- readMat(paste(directory, "gamma_", valuesCurrent, ".mat", sep="")) -->
+<!-- # Load the times -->
+<!-- timesListCurrent <- readMat(paste(directory, "times_", valuesCurrent, ".mat", sep="")) -->
+
+<!-- dt <- timesListCurrent$times[2] - timesListCurrent$times[1] -->
+
+<!-- numSolsCurrent <- length(solsListCurrent[[1]]) -->
+<!-- solDataCurrent <- NULL # Create data frame for solutions -->
+<!-- gammaDataCurrent <- NULL -->
+
+<!-- # Plot solutions -->
+<!-- for ( i in seq(1, length(timeSamples), 1) ) -->
+<!-- { -->
+
+<!--   solDataFrame <- NULL -->
+<!--   time = timeSamples[i] -->
+<!--   index = match(time, timesListCurrent$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsListCurrent[[1]][[index]][[1]] -->
+
+<!--   # Update the solutions -->
+<!--   solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + 1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], Eb=sol[9,], n3=(sol[7,]) + sol[6,]*sin(sol[7,])) -->
+<!--   solDataFrame$time = time -->
+<!--   solDataCurrent <- rbind(solDataCurrent, solDataFrame) -->
+<!-- } -->
+
+<!-- solPlot <- ggplot() + geom_path(data=solDataInit, aes(x, -y, color=Eb), size=1.0)  + -->
+<!--   geom_path(data=solDataCurrent, aes(x, -y, color=Eb), size=1.0) + -->
+<!--   ylab(TeX('$y$')) +   xlab(TeX('$x$')) + -->
+<!--   theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + -->
+<!--   scale_x_continuous(expand = c(0, 0), limits=c(-0.0, 2.55)) + -->
+<!--   scale_y_continuous(expand = c(0, 0), limits=c(-1.55, 0.15)) + -->
+<!--   scale_colour_gradient(name = TeX("$\\E_b"), low="#a6611a", high="#80cdc1") -->
+
+<!-- solPlot -->
+
+<!-- ``` -->
+
+<!-- We plot $E_b(s)$ for different values of $\sigma_E$, and compare the shape at time $t = 2$ with the homogeneous case. -->
+
+<!-- ```{r plot shape for remodelling foundation kf 0p01 nu 10 variable current stiffness with different widths, echo=FALSE, fig.align="center", warning=FALSE} -->
+<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+
+<!-- sigmaValues = c("w", "2w", "5w", "homog") -->
+<!-- timeSample = 2.0 -->
+
+<!-- solPlot <- ggplot() # Create solplot -->
+<!-- solData <- NULL # Create data frame for solutions -->
+
+<!-- # Plot solutions -->
+<!-- for ( i in seq(1, length(sigmaValues), 1) ) -->
+<!-- { -->
+<!--   sigma = sigmaValues[i] -->
+
+<!--   if (i == length(sigmaValues)) -->
+<!--   { -->
+
+<!--     values = "Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth" -->
+
+<!--   } -->
+<!--   else -->
+<!--   { -->
+
+<!--     values = paste("Eb_0p5_sigmaE_current_", sigma, "_nu_10_kf_0p01_L0_0p125_homoggrowth", sep="") -->
+
+<!--   } -->
+
+<!--   # Load the solutions -->
+<!--   solsList <- readMat(paste(directory, "sols_", values, ".mat", sep="")) -->
+<!--   timesList <- readMat(paste(directory, "times_", values, ".mat", sep="")) -->
+
+<!--   solDataFrame <- NULL -->
+<!--   index = match(timeSample, timesList$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsList[[1]][[index]][[1]] -->
+
+<!--   if (i == length(sigmaValues)) -->
+<!--   { -->
+<!--         # Update the solutions -->
+<!--     solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], Eb=1) -->
+<!--     solDataFrame$sigma = as.factor(sigma) -->
+<!--     solData <- rbind(solData, solDataFrame) -->
+
+<!--   } -->
+<!--   else -->
+<!--   { -->
+
+<!--     # Update the solutions -->
+<!--     solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], Eb=sol[9,]) -->
+<!--     solDataFrame$sigma = as.factor(sigma) -->
+<!--     solData <- rbind(solData, solDataFrame) -->
+
+<!--   } -->
+
+<!-- } -->
+
+<!-- solPlot <- ggplot() + geom_path(data=solData, aes(x, -y, color=sigma), size=1.0)  + -->
+<!--   ylab(TeX('$y$')) +   xlab(TeX('$x$')) + -->
+<!--   theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + -->
+<!--   scale_x_continuous(expand = c(0, 0), limits=c(-0.05, 1.05)) + -->
+<!--   scale_y_continuous(expand = c(0, 0), limits=c(-1.15, 0.15))  -->
+<!--   # scale_colour_manual(values=colorRampPalette(brewer.pal(9, "Greens"))(length(sigmaValues))) -->
+<!-- solPlot -->
+
+
+<!-- ``` -->
+
+<!-- <!-- Changing the value of $\eta$ does not change this phenomenon. --> -->
+<!-- <!-- ```{r plot shape for remodelling foundation kf 0p01 nu 1 variable current stiffness with different widths, echo=FALSE, fig.align="center", warning=FALSE} --> -->
+<!-- <!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" --> -->
+
+<!-- <!-- sigmaValues = c("w", "2w", "5w", "homog") --> -->
+<!-- <!-- timeSample = 1.0 --> -->
+
+<!-- <!-- solPlot <- ggplot() # Create solplot --> -->
+<!-- <!-- solData <- NULL # Create data frame for solutions --> -->
+
+<!-- <!-- # Plot solutions --> -->
+<!-- <!-- for ( i in seq(1, length(sigmaValues), 1) ) --> -->
+<!-- <!-- { --> -->
+<!-- <!--   sigma = sigmaValues[i] --> -->
+
+<!-- <!--   if (i == length(sigmaValues)) --> -->
+<!-- <!--   { --> -->
+
+<!-- <!--     values = "Eb_1_nu_1_kf_0p01_L0_0p125_homoggrowth" --> -->
+
+<!-- <!--   } --> -->
+<!-- <!--   else --> -->
+<!-- <!--   { --> -->
+
+<!-- <!--     values = paste("Eb_0p5_sigmaE_current_", sigma, "_nu_1_kf_0p01_L0_0p125_homoggrowth", sep="") --> -->
+
+<!-- <!--   } --> -->
+
+<!-- <!--   # Load the solutions --> -->
+<!-- <!--   solsList <- readMat(paste(directory, "sols_", values, ".mat", sep="")) --> -->
+<!-- <!--   timesList <- readMat(paste(directory, "times_", values, ".mat", sep="")) --> -->
+
+<!-- <!--   solDataFrame <- NULL --> -->
+<!-- <!--   index = match(timeSample, timesList$times) --> -->
+
+<!-- <!--   # Extract the solution, growth and time --> -->
+<!-- <!--   sol <- solsList[[1]][[index]][[1]] --> -->
+
+<!-- <!--   if (i == length(sigmaValues)) --> -->
+<!-- <!--   { --> -->
+<!-- <!--         # Update the solutions --> -->
+<!-- <!--     solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], Eb=1) --> -->
+<!-- <!--     solDataFrame$sigma = as.factor(sigma) --> -->
+<!-- <!--     solData <- rbind(solData, solDataFrame) --> -->
+
+<!-- <!--   } --> -->
+<!-- <!--   else --> -->
+<!-- <!--   { --> -->
+
+<!-- <!--     # Update the solutions --> -->
+<!-- <!--     solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], Eb=sol[9,]) --> -->
+<!-- <!--     solDataFrame$sigma = as.factor(sigma) --> -->
+<!-- <!--     solData <- rbind(solData, solDataFrame) --> -->
+
+<!-- <!--   } --> -->
+
+<!-- <!-- } --> -->
+
+<!-- <!-- solPlot <- ggplot() + geom_path(data=solData, aes(x, -y, color=sigma), size=1.0)  + --> -->
+<!-- <!--   ylab(TeX('$y$')) +   xlab(TeX('$x$')) + --> -->
+<!-- <!--   theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + --> -->
+<!-- <!--   scale_x_continuous(expand = c(0, 0), limits=c(-0.05, 1.05)) + --> -->
+<!-- <!--   scale_y_continuous(expand = c(0, 0), limits=c(-0.5, 0.15)) --> -->
+<!-- <!--   # scale_colour_manual(values=colorRampPalette(brewer.pal(9, "Greens"))(length(sigmaValues))) --> -->
+
+<!-- <!-- solPlot --> -->
+
+<!-- <!-- ``` --> -->
+
+<!-- We plot $E_b(S_0)$ for different values of $\sigma_E$, and compare the shape at time $t = 2$ with the homogeneous case. -->
+<!-- ```{r plot shape for remodelling foundation kf 0p01 nu 10 variable initial stiffness with different widths, echo=FALSE, fig.align="center", warning=FALSE} -->
+<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+
+<!-- sigmaValues = c("w", "2w", "5w", "homog") -->
+<!-- timeSample = 2.0 -->
+
+<!-- solPlot <- ggplot() # Create solplot -->
+<!-- solData <- NULL # Create data frame for solutions -->
+
+<!-- # Plot solutions -->
+<!-- for ( i in seq(1, length(sigmaValues), 1) ) -->
+<!-- { -->
+<!--   sigma = sigmaValues[i] -->
+
+<!--   if (i == length(sigmaValues)) -->
+<!--   { -->
+
+<!--     values = "Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth" -->
+
+<!--   } -->
+<!--   else -->
+<!--   { -->
+
+<!--     values = paste("Eb_0p5_sigmaE_init_", sigma, "_nu_10_kf_0p01_L0_0p125_homoggrowth", sep="") -->
+
+<!--   } -->
+
+<!--   # Load the solutions -->
+<!--   solsList <- readMat(paste(directory, "sols_", values, ".mat", sep="")) -->
+<!--   timesList <- readMat(paste(directory, "times_", values, ".mat", sep="")) -->
+
+<!--   solDataFrame <- NULL -->
+<!--   index = match(timeSample, timesList$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsList[[1]][[index]][[1]] -->
+
+<!--   if (i == length(sigmaValues)) -->
+<!--   { -->
+<!--         # Update the solutions -->
+<!--     solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], Eb=1) -->
+<!--     solDataFrame$sigma = as.factor(sigma) -->
+<!--     solData <- rbind(solData, solDataFrame) -->
+
+<!--   } -->
+<!--   else -->
+<!--   { -->
+
+<!--     # Update the solutions -->
+<!--     solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], Eb=sol[9,]) -->
+<!--     solDataFrame$sigma = as.factor(sigma) -->
+<!--     solData <- rbind(solData, solDataFrame) -->
+
+<!--   } -->
+
+<!-- } -->
+
+<!-- solPlot <- ggplot() + geom_path(data=solData, aes(x, -y, color=sigma), size=1.0)  + -->
+<!--   ylab(TeX('$y$')) +   xlab(TeX('$x$')) + -->
+<!--   theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + -->
+<!--   scale_x_continuous(expand = c(0, 0), limits=c(-0.05, 1.05)) + -->
+<!--   scale_y_continuous(expand = c(0, 0), limits=c(-1.15, 0.15)) -->
+<!--   # scale_colour_manual(values=colorRampPalette(brewer.pal(9, "Greens"))(length(sigmaValues))) -->
+
+<!-- solPlot -->
+
+<!-- ``` -->
+
+
+<!-- ### Reminder: purely chemical-driven growth -->
+
+<!-- ```{r plot shape for remodelling foundation kf 0p01 nu 1 chemical-based growth with different parametrisations, echo=FALSE, fig.align="center", warning=FALSE} -->
+<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- valuesCurrent = "Eb_0_nu_1_kf_0p01_L0_0p125_current_sigma_2w" -->
+<!-- valuesInit = "Eb_0_nu_1_kf_0p01_L0_0p125_sigma_init_2w" -->
+
+<!-- timeSamples = c(0.1, 1.0, 2.0) -->
+<!-- solPlot <- NULL -->
+
+<!-- # Load the solutions -->
+<!-- solsListInit <- readMat(paste(directory, "sols_", valuesInit, ".mat", sep="")) -->
+<!-- gammasListInit <- readMat(paste(directory, "gamma_", valuesInit, ".mat", sep="")) -->
+<!-- # Load the times -->
+<!-- timesListInit <- readMat(paste(directory, "times_", valuesInit, ".mat", sep="")) -->
+
+<!-- dt <- timesListInit$times[2] - timesListInit$times[1] -->
+
+<!-- numSolsInit <- length(solsListInit[[1]]) -->
+<!-- solDataInit <- NULL # Create data frame for solutions -->
+
+<!-- # # Plot solutions -->
+<!-- for ( i in seq(1, length(timeSamples), 1) ) -->
+<!-- { -->
+
+<!--   solDataFrame <- NULL -->
+<!--   time = timeSamples[i] -->
+<!--   index = match(time, timesListInit$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsListInit[[1]][[index]][[1]] -->
+<!--   gammaProfile <- gammasListInit[[1]][[index]][[1]] -->
+<!--   gammaProfilePrevious <- gammasListInit[[1]][[index - 1]][[1]] -->
+<!--   growthIncrement <- (gammaProfile[2,] - gammaProfilePrevious[2,])/(dt*gammaProfilePrevious[2,]) -->
+
+<!--   # Update the solutions -->
+<!--   solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=growthIncrement, n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,])) -->
+<!--   solDataFrame$time = time -->
+<!--   solDataInit <- rbind(solDataInit, solDataFrame) -->
+
+<!-- } -->
+
+<!-- # Load the solutions -->
+<!-- solsListCurrent <- readMat(paste(directory, "sols_", valuesCurrent, ".mat", sep="")) -->
+<!-- gammasListCurrent <- readMat(paste(directory, "gamma_", valuesCurrent, ".mat", sep="")) -->
+<!-- # Load the times -->
+<!-- timesListCurrent <- readMat(paste(directory, "times_", valuesCurrent, ".mat", sep="")) -->
+
+<!-- dt <- timesListCurrent$times[2] - timesListCurrent$times[1] -->
+
+<!-- numSolsCurrent <- length(solsListCurrent[[1]]) -->
+<!-- solDataCurrent <- NULL # Create data frame for solutions -->
+<!-- gammaDataCurrent <- NULL -->
+
+<!-- # # Plot solutions -->
+<!-- for ( i in seq(1, length(timeSamples), 1) ) -->
+<!-- { -->
+
+<!--   solDataFrame <- NULL -->
+<!--   time = timeSamples[i] -->
+<!--   index = match(time, timesListCurrent$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsListCurrent[[1]][[index]][[1]] -->
+<!--   gammaProfile <- gammasListCurrent[[1]][[index]][[1]] -->
+<!--   gammaProfilePrevious <- gammasListCurrent[[1]][[index - 1]][[1]] -->
+<!--   growthIncrement <- (gammaProfile[2,] - gammaProfilePrevious[2,])/(dt*gammaProfilePrevious[2,]) -->
+
+<!--   # Update the solutions -->
+<!--   solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + 1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=growthIncrement, n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,])) -->
+<!--   solDataFrame$time = time -->
+<!--   solDataCurrent <- rbind(solDataCurrent, solDataFrame) -->
+<!-- } -->
+
+<!-- tikz(file = "PlotWntSignallingShapeDifferentArcLengths.tex", standAlone = T, width = 4, height = 3) -->
+
+<!-- solPlot <- ggplot() + geom_path(data=solDataInit, aes(x, -y, color=g), size=1.0)  +   -->
+<!--   geom_path(data=solDataCurrent, aes(x, -y, color=g), size=1.0) +  -->
+<!--   ylab('$y$') +   xlab('$x$') + -->
+<!--   theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + -->
+<!--   scale_x_continuous(expand = c(0, 0), limits=c(-0.0, 2.55)) + -->
+<!--   scale_y_continuous(expand = c(0, 0), limits=c(-0.65, 0.1)) +  -->
+<!--   scale_colour_gradient(limits=c(0, 1), breaks=c(0, 1), low="#a6611a", high="#80cdc1") -->
+
+<!-- print(solPlot) -->
+<!-- dev.off() -->
+
+<!-- tools::texi2dvi('PlotWntSignallingShapeDifferentArcLengths.tex', pdf = T, clean = T) -->
+
+
+<!-- ``` -->
+
+
+<!-- ```{r plot remodelling foundation kf 0p01 nu 1 chemical-based growth, echo=FALSE, fig.align="center", warning=FALSE} -->
+<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- valuesCurrent = "Eb_0_nu_1_kf_0p01_L0_0p125_current_sigma_2w" -->
+<!-- valuesInit = "Eb_0_nu_1_kf_0p01_L0_0p125_sigma_init_2w" -->
+
+<!-- solPlot <- NULL  -->
+<!-- timeSamples = c(0.1, 1.0, 2.0) -->
+
+<!-- # Load the solutions -->
+<!-- solsListInit <- readMat(paste(directory, "sols_", valuesInit, ".mat", sep="")) -->
+<!-- gammasListInit <- readMat(paste(directory, "gamma_", valuesInit, ".mat", sep="")) -->
+<!-- # Load the times -->
+<!-- timesListInit <- readMat(paste(directory, "times_", valuesInit, ".mat", sep="")) -->
+
+<!-- dt <- timesListInit$times[2] - timesListInit$times[1] -->
+
+<!-- numSolsInit <- length(solsListInit[[1]]) -->
+<!-- solDataInit <- NULL # Create data frame for solutions -->
+
+<!-- # # Plot solutions -->
+<!-- for ( i in seq(1, length(timeSamples), 1) ) -->
+<!-- { -->
+
+<!--   time = timeSamples[i] -->
+<!--   index = match(time, timesListInit$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsListInit[[1]][[index]][[1]] -->
+<!--   gammaProfile <- gammasListInit[[1]][[index]][[1]] -->
+<!--   gammaProfilePrevious <- gammasListInit[[1]][[index - 1]][[1]] -->
+<!--   growthIncrement <- (gammaProfile[2,] - gammaProfilePrevious[2,])/gammaProfilePrevious[2,] -->
+<!--   currentTime = timesListInit[[1]][[index]] -->
+
+<!--   # Update the solutions -->
+<!--   solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=growthIncrement, n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,])) -->
+<!--   solDataFrame$time = as.factor(time) -->
+<!--   solDataInit <- rbind(solDataInit, solDataFrame) -->
+
+<!-- } -->
+
+<!-- # Load the solutions -->
+<!-- solsListCurrent <- readMat(paste(directory, "sols_", valuesCurrent, ".mat", sep="")) -->
+<!-- gammasListCurrent <- readMat(paste(directory, "gamma_", valuesCurrent, ".mat", sep="")) -->
+<!-- # Load the times -->
+<!-- timesListCurrent <- readMat(paste(directory, "times_", valuesCurrent, ".mat", sep="")) -->
+
+<!-- dt <- timesListCurrent$times[2] - timesListCurrent$times[1] -->
+
+<!-- numSolsCurrent <- length(solsListCurrent[[1]]) -->
+<!-- solDataCurrent <- NULL # Create data frame for solutions -->
+
+<!-- # # Plot solutions -->
+<!-- for ( i in seq(1, length(timeSamples), 1) ) -->
+<!-- { -->
+
+<!--   time = timeSamples[i] -->
+<!--   index = match(time, timesListCurrent$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsListCurrent[[1]][[index]][[1]] -->
+<!--   gammaProfile <- gammasListCurrent[[1]][[index]][[1]] -->
+<!--   gammaProfilePrevious <- gammasListCurrent[[1]][[index - 1]][[1]] -->
+<!--   growthIncrement <- (gammaProfile[2,] - gammaProfilePrevious[2,])/gammaProfilePrevious[2,] -->
+<!--   currentTime = timesListCurrent[[1]][[index]] -->
+
+<!--   # Update the solutions -->
+<!--   solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + 1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=growthIncrement, n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,])) -->
+<!--   solDataFrame$time = as.factor(time) -->
+<!--   solDataCurrent <- rbind(solDataCurrent, solDataFrame) -->
+<!-- } -->
+
+<!-- solPlot <- ggplot() + geom_path(data=solDataInit, aes(x, -y, color=n3), size=1.0)  +   -->
+<!--   geom_path(data=solDataCurrent, aes(x, -y, color=n3), size=1.0) +  -->
+<!--   ylab(TeX('$y$')) +   xlab(TeX('$x$')) + -->
+<!--   theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + -->
+<!--   scale_x_continuous(expand = c(0, 0), limits=c(-0.0, 2.55)) + -->
+<!--   scale_y_continuous(expand = c(0, 0), limits=c(-0.65, 0.1)) +  -->
+<!--   scale_colour_gradient(name = TeX("$n_3"), low="#a6611a", high="#80cdc1") -->
+
+<!-- solPlot -->
+
+<!-- ``` -->
+
+<!-- ```{r plot shape for different wnt widths remodelling foundation kf 0p01 nu 1 chemical-based current growth, echo=FALSE, fig.align="center", warning=FALSE} -->
+<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- valuesCurrent = "Eb_0_nu_1_kf_0p01_L0_0p125_current_sigma_5w" -->
+<!-- valuesInit = "Eb_0_nu_1_kf_0p01_L0_0p125_current_sigma_2w" -->
+
+<!-- timeSamples = c(0.1, 1.0, 2.0) -->
+
+<!-- # Load the solutions -->
+<!-- solsListInit <- readMat(paste(directory, "sols_", valuesInit, ".mat", sep="")) -->
+<!-- gammasListInit <- readMat(paste(directory, "gamma_", valuesInit, ".mat", sep="")) -->
+<!-- # Load the times -->
+<!-- timesListInit <- readMat(paste(directory, "times_", valuesInit, ".mat", sep="")) -->
+
+<!-- dt <- timesListInit$times[2] - timesListInit$times[1] -->
+
+<!-- numSolsInit <- length(solsListInit[[1]]) -->
+<!-- solDataInit <- NULL # Create data frame for solutions -->
+
+<!-- # # Plot solutions -->
+<!-- for ( i in seq(1, length(timeSamples), 1) ) -->
+<!-- { -->
+
+<!--   time = timeSamples[i] -->
+<!--   index = match(time, timesListInit$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsListInit[[1]][[index]][[1]] -->
+<!--   gammaProfile <- gammasListInit[[1]][[index]][[1]] -->
+<!--   gammaProfilePrevious <- gammasListInit[[1]][[index - 1]][[1]] -->
+<!--   growthIncrement <- (gammaProfile[2,] - gammaProfilePrevious[2,])/gammaProfilePrevious[2,] -->
+<!--   currentTime = timesListInit[[1]][[index]] -->
+
+<!--   # Update the solutions -->
+<!--   solDataFrame <- data.frame(S=sol[2,], x=sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=growthIncrement, n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,])) -->
+<!--   solDataFrame$time = as.factor(time) -->
+<!--   solDataInit <- rbind(solDataInit, solDataFrame) -->
+
+<!-- } -->
+
+<!-- # Load the solutions -->
+<!-- solsListCurrent <- readMat(paste(directory, "sols_", valuesCurrent, ".mat", sep="")) -->
+<!-- gammasListCurrent <- readMat(paste(directory, "gamma_", valuesCurrent, ".mat", sep="")) -->
+<!-- # Load the times -->
+<!-- timesListCurrent <- readMat(paste(directory, "times_", valuesCurrent, ".mat", sep="")) -->
+
+<!-- dt <- timesListCurrent$times[2] - timesListCurrent$times[1] -->
+
+<!-- numSolsCurrent <- length(solsListCurrent[[1]]) -->
+<!-- solDataCurrent <- NULL # Create data frame for solutions -->
+<!-- gammaDataCurrent <- NULL -->
+
+<!-- # # Plot solutions -->
+<!-- for ( i in seq(1, length(timeSamples), 1) ) -->
+<!-- { -->
+
+<!--   time = timeSamples[i] -->
+<!--   index = match(time, timesListCurrent$times) -->
+
+<!--   # Extract the solution, growth and time -->
+<!--   sol <- solsListCurrent[[1]][[index]][[1]] -->
+<!--   gammaProfile <- gammasListCurrent[[1]][[index]][[1]] -->
+<!--   gammaProfilePrevious <- gammasListCurrent[[1]][[index - 1]][[1]] -->
+<!--   growthIncrement <- (gammaProfile[2,] - gammaProfilePrevious[2,])/(dt*gammaProfilePrevious[2,]) -->
+<!--   currentTime = timesListCurrent[[1]][[index]] -->
+
+<!--   # Update the solutions -->
+<!--   solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + 1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=growthIncrement, n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,])) -->
+<!--   solDataFrame$time = as.factor(currentTime) -->
+<!--   solDataCurrent <- rbind(solDataCurrent, solDataFrame) -->
+
+<!-- } -->
+
+<!-- solPlot <- ggplot() -->
+<!-- solPlot <- solPlot + geom_path(data=solDataInit, aes(x, -y, color=g), size=1.0)  +   -->
+<!--   geom_path(data=solDataCurrent, aes(x, -y, color=g), size=1.0) +  -->
+<!--   ylab(TeX('$y$')) +   xlab(TeX('$x$')) + -->
+<!--   theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) + -->
+<!--   scale_x_continuous(expand = c(0, 0), limits=c(-0.0, 2.55)) + -->
+<!--   scale_y_continuous(expand = c(0, 0), limits=c(-0.65, 0.1)) +  -->
+<!--   scale_colour_gradient(name = TeX("$\\frac{\\dot{\\gamma}}{\\gamma}"), low="#a6611a", high="#80cdc1") -->
+
+<!-- solPlot -->
+
+<!-- ``` -->
+
+### Mechanical feedback 
+We consider mechanical feedback on mechanical stiffness, which has been shown to yield anisotropies in growth in plant tissue models. It has been shown that in order to maintain confluence, epithelial tissues can increase cell-cell adhesion when stretched, and decrease stiffness when compressed. We thus consider a stiffness feedback law of the form
+
+\begin{align}
+\dot{E_b} =  \mu(n_3 - n_3^*),
+\end{align}
+
+# Results
+
+### Effect of feedback sensitivity in growth
+
+We plot the morphologies for mechanosensitive growth under a linear coupling, for varying sensitivity rates.
+
+```{r plot growth sigmaW w mechanosensitive growth compare mu at self-contact, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+timeSamples = c(0.01, 0.1)
+
+muValues <- c("0p05", "0p5")
+
+maxValues = "Eb_1_nu_10_kf_0p01_L0_0p125_sigma_current_w_tensiongrowth_mu3_0p05"
+maxTimesList  <- readMat(paste(directory, "times_", maxValues, ".mat", sep=""))
+maxNumSols <- length(maxTimesList$times)
+maxTime <- maxTimesList$times[maxNumSols]
+
+gammaData <- NULL # Create data frame for gamma profiles
+
+solPlot <- ggplot()
+
+for ( i in seq(1, length(muValues), 1) )
+{
+  mu = muValues[i]
+  values = paste("Eb_1_nu_10_kf_0p01_L0_0p125_sigma_current_w_tensiongrowth_mu3_", mu, sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  gammasList <- readMat(paste(directory, "gamma_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  solData <- NULL # Create data frame for solutions
+  
+  # Get the solution from a sampled timepoint
+  finalIndex <- match(0.07, timesList$times)
+  startIndex <- 2
+  solCount <- 5
+  dt <- timesList$times[2] - timesList$times[1]
+  
+  for ( j in seq(1, length(timeSamples), 1) )
+  {
+    
+    time <- timeSamples[j]
+    index <- match(time, timesList$times)
+    # Extract the solution, growth and time
+    sol <- solsList[[1]][[index]][[1]]
+    currentGrowth <- gammasList[[1]][[index]][[1]]
+    previousGrowth <- gammasList[[1]][[index - 1]][[1]]
+    growthIncrement <- (currentGrowth[2,] - previousGrowth[2,])/(dt*previousGrowth[2,])
+    
+    # Update the solutions
+    solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=growthIncrement, n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,]), n1=sol[5,]*sin(sol[7,]) - sol[6,]*cos(sol[7,]))
+    solDataFrame$time = as.factor(time)
+    solData <- rbind(solData, solDataFrame)
+    
+  }
+  
+  solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=g), size=1.0)
+}
+
+# tikz(file = "PlotWntBasedCurrentGrowthFixedTimeTwoDaysVaryingSigma.tex", standAlone = T, width = 5, height = 3)
+
+solPlot <- solPlot + xlab(TeX('S_0')) +   ylab(TeX('$\\gamma')) +
+  theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  scale_x_continuous(expand = c(0, 0), limits=c(-0.05, length(muValues)*1.5)) + 
+  scale_colour_gradient(name = TeX("$\\frac{\\dot{\\gamma}}{\\gamma}"), low="#a6611a", high="#80cdc1")
+
+solPlot
+# dev.off()
+
+# tools::texi2dvi('PlotWntBasedCurrentGrowthFixedTimeTwoDaysVaryingSigma.tex', pdf = T, clean = T)
+
+```
+
+```{r plot axial stress sigmaW w mechanosensitive growth compare mu at fixed time, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+timeSamples = c(0.01, 0.07)
+
+muValues <- c("0p05", "0p5")
+
+maxValues = "Eb_1_nu_10_kf_0p01_L0_0p125_sigma_current_w_tensiongrowth_mu3_0p05"
+maxTimesList  <- readMat(paste(directory, "times_", maxValues, ".mat", sep=""))
+maxNumSols <- length(maxTimesList$times)
+maxTime <- maxTimesList$times[maxNumSols]
+
+gammaData <- NULL # Create data frame for gamma profiles
+
+solPlot <- ggplot()
+
+for ( i in seq(1, length(muValues), 1) )
+{
+  mu = muValues[i]
+  values = paste("Eb_1_nu_10_kf_0p01_L0_0p125_sigma_current_w_tensiongrowth_mu3_", mu, sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  gammasList <- readMat(paste(directory, "gamma_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  solData <- NULL # Create data frame for solutions
+  
+  # Get the solution from a sampled timepoint
+  dt <- timesList$times[2] - timesList$times[1]
+  
+  for ( j in seq(1, length(timeSamples), 1) )
+  {
+    
+    time <- timeSamples[j]
+    index <- match(time, timesList$times)
+    # Extract the solution, growth and time
+    sol <- solsList[[1]][[index]][[1]]
+    currentGrowth <- gammasList[[1]][[index]][[1]]
+    previousGrowth <- gammasList[[1]][[index - 1]][[1]]
+    growthIncrement <- (currentGrowth[2,] - previousGrowth[2,])/(previousGrowth[2,])
+    # growthIncrement <- (currentGrowth[2,])/(previousGrowth[2,])
+    
+    # Update the solutions
+    solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=growthIncrement, n3=sol[5,]*cos(sol[7,]) + sol[6,]*sin(sol[7,]), n1=sol[5,]*sin(sol[7,]) - sol[6,]*cos(sol[7,]))
+    solDataFrame$time = as.factor(time)
+    solData <- rbind(solData, solDataFrame)
+    
+    
+  }
+  
+  solPlot <- solPlot + geom_path(data=solData, aes(x, -y, color=n3), size=1.0)
+}
+
+# tikz(file = "PlotWntBasedCurrentGrowthFixedTimeTwoDaysVaryingSigma.tex", standAlone = T, width = 5, height = 3)
+
+solPlot <- solPlot + xlab(TeX('S_0')) +   ylab(TeX('$\\gamma')) +
+  theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  scale_x_continuous(expand = c(0, 0), limits=c(-0.05, length(muValues)*1.5)) + 
+  scale_colour_gradient(name = TeX("$\\n_3"), low="#a6611a", high="#80cdc1")
+
+solPlot
+# dev.off()
+
+# tools::texi2dvi('PlotWntBasedCurrentGrowthFixedTimeTwoDaysVaryingSigma.tex', pdf = T, clean = T)
+
+```
+
+```{r plot growth sigmaW 2w linear mechanosensitive growth compare mu at self-contact, echo=FALSE, fig.align="center", warning=FALSE}
+
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+timeSamples = c(0.01, 0.07)
+
+muValues <- c("0p1", "0p5")
+
+solPlot <- ggplot()
+
+for ( i in seq(1, length(muValues), 1) )
+{
+  mu <- muValues[i]
+  values <- paste("Eb_1_nu_10_kf_0p01_L0_0p125_lineartensiongrowth_sigma_2w_mu3_", mu, sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  # Get the solution from a sampled timepoint
+  dt <- timesList$times[2] - timesList$times[1]
+  
+
+  for ( j in seq(1, length(timeSamples), 1) )
+  {
+    
+    solDataFrame <- NULL
+
+    time <- timeSamples[j]
+    index <- match(time, timesList$times)
+    # Extract the solution, growth and time
+    sol <- solsList[[1]][[index]][[1]]
+    
+    # Update the solutions
+    solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5 + 0.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=sol[9,])
+
+    solPlot <- solPlot + geom_path(data=solDataFrame, aes(x, -y, color=g), size=1.0)
+
+    # Update the solutions
+    solDataFrameReflected <- data.frame(S=sol[2,], x=(i - 1)*1.5 + 0.5-sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=sol[9,])
+
+    solPlot <- solPlot + geom_path(data=solDataFrameReflected, aes(x, -y, color=g), size=1.0)
+  }
+  
+
+  
+}
+
+# tikz(file = "PlotWntBasedCurrentGrowthFixedTimeTwoDaysVaryingSigma.tex", standAlone = T, width = 5, height = 3)
+# 
+solPlot <- solPlot + xlab(TeX('S_0')) +   ylab(TeX('$\\gamma')) +
+  theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  # scale_x_continuous(expand = c(0, 0), limits=c(-0.55, length(muValues)*1.5)) +
+  scale_colour_gradient(low="#a6611a", high="#80cdc1")
+
+solPlot
+# dev.off()
+
+# tools::texi2dvi('PlotWntBasedCurrentGrowthFixedTimeTwoDaysVaryingSigma.tex', pdf = T, clean = T)
+
+```
+
+We now plot the same results but for saturating mechanosensitive growth:
+
+$\frac{\dot{\gamma}}{\gamma} = W(s) + \mu\tanh\left(n_3 - n_3^*\right)$
+
+```{r plot growth sigmaW 2w saturating mechanosensitive growth compare mu at self-contact, echo=FALSE, fig.align="center", warning=FALSE}
+
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+timeSamples = c(0.1, 0.5, 1.0)
+
+muValues <- c("0p1", "0p5", "1")
+
+solPlot <- ggplot()
+
+for ( i in seq(1, length(muValues), 1) )
+{
+  mu <- muValues[i]
+  values <- paste("Eb_1_nu_10_kf_0p01_L0_0p125_saturatingtensiongrowth_sigma_2w_mu3_", mu, sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  # Get the solution from a sampled timepoint
+  dt <- timesList$times[2] - timesList$times[1]
+  
+
+  for ( j in seq(1, length(timeSamples), 1) )
+  {
+    
+    solDataFrame <- NULL
+
+    time <- timeSamples[j]
+    index <- match(time, timesList$times)
+    # Extract the solution, growth and time
+    sol <- solsList[[1]][[index]][[1]]
+    
+    # Update the solutions
+    solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5 + 0.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=sol[9,])
+
+    solPlot <- solPlot + geom_path(data=solDataFrame, aes(x, -y, color=g), size=1.0)
+
+    # Update the solutions
+    solDataFrameReflected <- data.frame(S=sol[2,], x=(i - 1)*1.5 + 0.5-sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=sol[9,])
+
+    solPlot <- solPlot + geom_path(data=solDataFrameReflected, aes(x, -y, color=g), size=1.0)
+  }
+  
+
+  
+}
+
+# tikz(file = "PlotWntBasedCurrentGrowthFixedTimeTwoDaysVaryingSigma.tex", standAlone = T, width = 5, height = 3)
+# 
+solPlot <- solPlot + xlab(TeX('S_0')) +   ylab(TeX('$\\gamma')) +
+  theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  # scale_x_continuous(expand = c(0, 0), limits=c(-0.55, length(muValues)*1.5)) +
+  scale_colour_gradient(low="#a6611a", high="#80cdc1")
+
+solPlot
+# dev.off()
+
+# tools::texi2dvi('PlotWntBasedCurrentGrowthFixedTimeTwoDaysVaryingSigma.tex', pdf = T, clean = T)
+
+```
+
+
+```{r plot growth sigmaW w saturating mechanosensitive growth compare mu at self-contact, echo=FALSE, fig.align="center", warning=FALSE}
+
+directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+timeSamples = c(0.1, 0.5, 1.0)
+
+muValues <- c("0p1", "0p5", "1")
+
+solPlot <- ggplot()
+
+for ( i in seq(1, length(muValues), 1) )
+{
+  mu <- muValues[i]
+  values <- paste("Eb_1_nu_10_kf_0p01_L0_0p125_saturatingtensiongrowth_sigma_w_mu3_", mu, sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  # Get the solution from a sampled timepoint
+  dt <- timesList$times[2] - timesList$times[1]
+  
+
+  for ( j in seq(1, length(timeSamples), 1) )
+  {
+    
+    solDataFrame <- NULL
+
+    time <- timeSamples[j]
+    index <- match(time, timesList$times)
+    # Extract the solution, growth and time
+    sol <- solsList[[1]][[index]][[1]]
+    
+    # Update the solutions
+    solDataFrame <- data.frame(S=sol[2,], x=sol[3,] + (i - 1)*1.5 + 0.5, y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=sol[9,])
+
+    solPlot <- solPlot + geom_path(data=solDataFrame, aes(x, -y, color=g), size=1.0)
+
+    # Update the solutions
+    solDataFrameReflected <- data.frame(S=sol[2,], x=(i - 1)*1.5 + 0.5-sol[3,], y=sol[4,], nX=sol[5,], nY=sol[6,], theta=sol[7,], m=sol[8,], g=sol[9,])
+
+    solPlot <- solPlot + geom_path(data=solDataFrameReflected, aes(x, -y, color=g), size=1.0)
+  }
+  
+
+  
+}
+
+# tikz(file = "PlotWntBasedCurrentGrowthFixedTimeTwoDaysVaryingSigma.tex", standAlone = T, width = 5, height = 3)
+# 
+solPlot <- solPlot + xlab(TeX('S_0')) +   ylab(TeX('$\\gamma')) +
+  theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18)) +
+  # scale_x_continuous(expand = c(0, 0), limits=c(-0.55, length(muValues)*1.5)) +
+  scale_colour_gradient(low="#a6611a", high="#80cdc1")
+
+solPlot
+# dev.off()
+
+# tools::texi2dvi('PlotWntBasedCurrentGrowthFixedTimeTwoDaysVaryingSigma.tex', pdf = T, clean = T)
+
+```
+
