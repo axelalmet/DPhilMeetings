@@ -48,7 +48,7 @@ where $H$ can depend on various quantities, such as position ($S_0$ or $s$), che
 All simulations here have been plotted for $\eta = 1$, $k_f = 0.01$, and $\sigma = 0.16$, which in dimensional terms corresponds to two cell widths. For reference, we plot the evolution for the case when growth is homogeneous. 
 
 ```{r plot remodelling foundation kf 0p01 nu 1 homog growth, echo=FALSE, fig.align="center", warning=FALSE}
-directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/"
 values = "Eb_0_nu_1_kf_0p01_L0_0p125_homoggrowth"
 
 # Load the solutions
@@ -94,7 +94,7 @@ solPlot
 <!-- We parametrise the proliferative, stem-like compartment with respect  to the current arclength parameter $s$. This is analogous to tip-based growth laws used in other models. -->
 
 <!-- ```{r plot remodelling foundation kf 0p01 nu 1 compartment-based growth, echo=FALSE, fig.align="center", warning=FALSE} -->
-<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
 <!-- values = "Eb_0_nu_1_kf_0p01_L0_0p125_compartmentgrowth_current_sigma_2w" -->
 
 <!-- # Load the solutions -->
@@ -150,7 +150,7 @@ solPlot
 <!-- As proof of concept, we show that when growth is parametrised by the initial arclength parameter $S_0$. In this case, the 'proliferative compartment' does not change in size as time increases, leading to a shorter invagination. -->
 
 <!-- ```{r plot remodelling foundation kf 0p01 nu 1 compartment-based growth S0, echo=FALSE, fig.align="center", warning=FALSE} -->
-<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
 <!-- values = "Eb_0_nu_1_kf_0p01_L0_0p125_compartmentgrowth_init_sigma_2w" -->
 
 <!-- # Load the solutions -->
@@ -222,7 +222,7 @@ W(S_0) = \mathrm{e}^{-\left(\frac{S_0 - 0.5}{\sigma}\right)^2}.
 The below plot shows the resultant shape evolutions when Wnt is parametrised by $S_0$ and $s$, respectively, up to $t = 2.0$ days. When $W$ is parametrised with respect to the initial configuration, initial growth is much more exaggerated than when $W = W(s)$. This arises from the greater increase in net growth when $W(S_0)$:
 
 ```{r plot remodelling foundation kf 0p01 nu 1 chemical-based growth, echo=FALSE, fig.align="center", warning=FALSE}
-directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/"
 valuesCurrent = "Eb_0_nu_1_kf_0p01_L0_0p125_current_sigma_2w"
 valuesInit = "Eb_0_nu_1_kf_0p01_L0_0p125_sigma_init_2w"
 
@@ -303,7 +303,7 @@ In the current configuration, we vary the width of the Wnt gradient. The values 
 Here, all solutions and $\gamma$ profiles are plotted at $t = 2.0$:
 
 ```{r plot remodelling foundation kf 0p01 nu 1 chemical-based growth s compare sigma, echo=FALSE, fig.align="center", warning=FALSE}
-directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/"
 
 timeSample = 2.0
 
@@ -382,7 +382,7 @@ for ( i in seq(1, length(sigmaValues), 1) )
 ```
 
 ```{r plot remodelling foundation kf 0p01 nu 1 chemical-based growth s n3 functions, echo=FALSE, fig.align="center", warning=FALSE}
-directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/"
 
 timeSample = 2.0
 
@@ -473,13 +473,13 @@ for ( i in seq(1, length(sigmaValues), 1) )
 ```
 
 ```{r plot remodelling foundation kf 0p01 nu 1 chemical-based growth s n1 functions, echo=FALSE, fig.align="center", warning=FALSE}
-directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/"
+directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/"
 
 timeSample = 2.0
 
 sigmaValues <- c("2w", "3w", "4w", "5w")
 
-maxValues = "Eb_0_nu_1_kf_0p01_L0_0p125_current_sigma_2w"
+maxValues = "Eb_0_nu_1_kf_0p01_L0_0p125_current_sigma_2w_normalised"
 maxTimesList  <- readMat(paste(directory, "times_", maxValues, ".mat", sep=""))
 maxNumSols <- length(maxTimesList$times)
 maxTime <- maxTimesList$times[maxNumSols]
@@ -565,7 +565,7 @@ for ( i in seq(1, length(sigmaValues), 1) )
 
 <!-- However, the final profiles look very different: -->
 <!-- ```{r plot remodelling foundation kf 0p01 nu 1 chemical-based growth s compare sigma and final shape, echo=FALSE, fig.align="center", warning=FALSE} -->
-<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
 
 <!-- timeSample = 1.0 -->
 
@@ -637,7 +637,7 @@ for ( i in seq(1, length(sigmaValues), 1) )
 
 <!-- ### Mechanosensitivity -->
 <!-- ```{r plot remodelling foundation stresses homog, echo=FALSE, fig.align="center", warning=FALSE} -->
-<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
 <!-- values = "Eb_1_nu_1_kf_0p01_L0_0p125_homoggrowth" -->
 
 <!-- # Load the solutions -->
@@ -693,7 +693,7 @@ for ( i in seq(1, length(sigmaValues), 1) )
 <!-- ``` -->
 
 <!-- ```{r plot remodelling foundation stresses sigma 2w, echo=FALSE, fig.align="center", warning=FALSE} -->
-<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
 <!-- values = "Eb_0_nu_1_kf_0p01_L0_0p125_current_sigma_2w" -->
 
 <!-- # Load the solutions -->
@@ -745,7 +745,7 @@ for ( i in seq(1, length(sigmaValues), 1) )
 <!-- ``` -->
 
 <!-- ```{r plot remodelling foundation stresses sigma 3w, echo=FALSE, fig.align="center", warning=FALSE} -->
-<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
 <!-- values = "Eb_0_nu_1_kf_0p01_L0_0p125_current_sigma_3w" -->
 
 <!-- # Load the solutions -->
@@ -797,7 +797,7 @@ for ( i in seq(1, length(sigmaValues), 1) )
 <!-- ``` -->
 
 <!-- ```{r plot remodelling foundation stresses sigma 4w, echo=FALSE, fig.align="center", warning=FALSE} -->
-<!-- directory = "~/Documents/MorphoelasticCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
+<!-- directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/" -->
 <!-- values = "Eb_0_nu_1_kf_0p01_L0_0p125_current_sigma_4w" -->
 
 <!-- # Load the solutions -->

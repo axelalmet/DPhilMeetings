@@ -1,0 +1,283 @@
+---
+title: "Understanding Foundation Constitutive Laws"
+author: "Axel Almet"
+date: "16 April 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(cowplot)
+library(R.matlab)
+library(latex2exp)
+library(RColorBrewer)
+library(ggpubr)
+library(plotly)
+library(tikzDevice)
+library(pracma)
+```
+
+## Maxwell foundation
+```{r plot invagination amplitudes for maxwell foundation varying nu linear homog growth, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+
+amplitudesPlot <- ggplot()
+
+nuValues <- c("5", "10", "50")
+
+solData <- NULL
+
+for (i in seq(1, length(nuValues), 1))
+{
+  solDataFrame <- NULL
+  
+  nu = nuValues[i]
+  
+  values = paste("Eb_1_beta_1_nu_", nu, "_kf_0p01_L0_0p125_homoggrowth", sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  numSols = match(1.0, timesList$times)
+  
+  times = timesList$times[seq(1, numSols, 1)]
+  amplitudes <- array(0, c(1, length(times)))
+  
+  
+  for ( j in seq(2, numSols, 1) )
+  {
+    # Extract the solution, growth and time
+    index = match(as.factor(times[j]), as.factor(timesList$times))
+    sol <- solsList[[1]][[index]][[1]]
+
+    amplitudes[j] <- max(sol[4,]) - 6
+    
+  }
+  
+  solDataFrame <- data.frame(time=times, y0=t(amplitudes))
+  solDataFrame$nu = as.factor(nu)
+  
+  amplitudesPlot <- amplitudesPlot + geom_path(data=solDataFrame, aes(time, y0, color=nu), size=0.75)
+
+  values = paste("Eb_1_beta_1_nu_", nu, "_kf_0p01_L0_0p125_relaxation", sep="")
+
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+  numSols = length(timesList$newTimes)
+
+  times = timesList$newTimes[seq(1, numSols, 1)]
+  amplitudes <- array(0, c(1, length(times)))
+  amplitudes[1] <- max(sol[4,]) - 6
+
+  solDataFrame <- NULL
+
+  for ( j in seq(2, numSols, 1) )
+  {
+    # Extract the solution, growth and time
+    index = match(as.factor(times[j]), as.factor(timesList$newTimes))
+    sol <- solsList[[1]][[index]][[1]]
+    
+    amplitudes[j] <- max(sol[4,]) - 6
+
+  }
+  
+  print(amplitudes[1])
+
+  solDataFrame <- data.frame(time=times + 1.0, y0=t(amplitudes))
+  solDataFrame$nu = as.factor(nu)
+
+  amplitudesPlot <- amplitudesPlot + geom_path(data=solDataFrame, aes(time, y0, color=nu), size=0.75)
+}
+
+amplitudesPlot <- amplitudesPlot + 
+  xlab('Time') + ylab('$\\|y(S_0)\\|$') + 
+  scale_x_continuous(expand = c(0, 0), limits=c(-0.0, 2.05), breaks=c(0, 1, 2)) + 
+  # scale_y_continuous(expand = c(0, 0), limits=c(-0.05, 100.05)) + 
+  theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18), plot.title=element_text(size=21)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(length(nuValues)))
+
+amplitudesPlot
+```
+
+## SLS foundation
+```{r plot invagination amplitudes for SLS foundation varying nu linear homog growth, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/LinearViscoelasticFoundation/StandardLinearSolid/"
+
+amplitudesPlot <- ggplot()
+
+nuValues <- c("5", "10", "50")
+
+solData <- NULL
+
+for (i in seq(1, length(nuValues), 1))
+{
+  solDataFrame <- NULL
+  
+  nu = nuValues[i]
+  
+  values = paste("Eb_1_beta_0p5_nu_", nu, "_kf_0p01_L0_0p125_homoggrowth", sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  numSols = match(1.0, timesList$times)
+  
+  times = timesList$times[seq(1, numSols, 1)]
+  amplitudes <- array(0, c(1, length(times)))
+  
+  
+  for ( j in seq(2, numSols, 1) )
+  {
+    # Extract the solution, growth and time
+    index = match(as.factor(times[j]), as.factor(timesList$times))
+    sol <- solsList[[1]][[index]][[1]]
+
+    amplitudes[j] <- max(sol[4,]) - 6
+    
+  }
+  
+  solDataFrame <- data.frame(time=times, y0=t(amplitudes))
+  solDataFrame$nu = as.factor(nu)
+  
+  amplitudesPlot <- amplitudesPlot + geom_path(data=solDataFrame, aes(time, y0, color=nu), size=0.75)
+
+  values = paste("Eb_1_beta_0p5_nu_", nu, "_kf_0p01_L0_0p125_relaxation", sep="")
+
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+  numSols = length(timesList$newTimes)
+
+  times = timesList$newTimes[seq(1, numSols, 1)]
+  amplitudes <- array(0, c(1, length(times)))
+  amplitudes[1] <- max(sol[4,]) - 6
+
+  solDataFrame <- NULL
+
+  for ( j in seq(2, numSols, 1) )
+  {
+    # Extract the solution, growth and time
+    index = match(as.factor(times[j]), as.factor(timesList$newTimes))
+    sol <- solsList[[1]][[index]][[1]]
+    
+    amplitudes[j] <- max(sol[4,]) - 6
+
+  }
+
+  solDataFrame <- data.frame(time=times + 1.0, y0=t(amplitudes))
+  solDataFrame$nu = as.factor(nu)
+
+  amplitudesPlot <- amplitudesPlot + geom_path(data=solDataFrame, aes(time, y0, color=nu), size=0.75)
+}
+
+amplitudesPlot <- amplitudesPlot + 
+  xlab('Time') + ylab('$\\| y(S_0) \\|$') + 
+  scale_x_continuous(expand = c(0, 0), limits=c(-0.0, 2.05), breaks=c(0, 1, 2)) + 
+  # scale_y_continuous(expand = c(0, 0), limits=c(-0.05, 100.05)) + 
+  theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18), plot.title=element_text(size=21)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(length(nuValues)))
+
+amplitudesPlot
+```
+
+
+## Remodelling foundation
+
+```{r plot invagination amplitudes for remodelling foundation varying nu linear homog growth, echo=FALSE, fig.align="center", warning=FALSE}
+directory = "~/Documents/MorphoCrypt/MATLAB/Solutions/RemodellingFoundation/"
+
+amplitudesPlot <- ggplot()
+
+nuValues <- c("1", "5", "10", "50")
+
+solData <- NULL
+
+for (i in seq(1, length(nuValues), 1))
+{
+  solDataFrame <- NULL
+  
+  nu = nuValues[i]
+  
+  values = paste("Eb_1_nu_", nu, "_kf_0p01_L0_0p125_expgrowth", sep="")
+  
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  foundationSolsList <- readMat(paste(directory, "foundationshapes_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+  
+  numSols = match(1.0, timesList$times)
+  
+  times = timesList$times[seq(1, numSols, 1)]
+  amplitudes <- array(0, c(1, length(times)))
+  
+  
+  for ( j in seq(2, numSols, 1) )
+  {
+    # Extract the solution, growth and time
+    index = match(as.factor(times[j]), as.factor(timesList$times))
+    sol <- solsList[[1]][[index]][[1]]
+
+    amplitudes[j] <- max(sol[4,])
+    
+  }
+  
+  solDataFrame <- data.frame(time=times, y0=t(amplitudes))
+  solDataFrame$nu = as.factor(nu)
+  
+  amplitudesPlot <- amplitudesPlot + geom_path(data=solDataFrame, aes(time, y0, color=nu), size=0.75)
+
+  values = paste("Eb_1_nu_", nu, "_kf_0p01_L0_0p125_relaxation_expgrowth", sep="")
+
+  # Load the solutions
+  solsList <- readMat(paste(directory, "sols_", values, ".mat", sep=""))
+  foundationSolsList <- readMat(paste(directory, "foundationshapes_", values, ".mat", sep=""))
+  # Load the times
+  timesList <- readMat(paste(directory, "times_", values, ".mat", sep=""))
+
+  numSols = length(timesList$newTimes)
+
+  times = timesList$newTimes[seq(1, numSols, 1)]
+  amplitudes <- array(0, c(1, length(times)))
+  amplitudes[1] <- max(sol[4,])
+
+  solDataFrame <- NULL
+
+  for ( j in seq(2, numSols, 1) )
+  {
+    # Extract the solution, growth and time
+    index = match(as.factor(times[j]), as.factor(timesList$newTimes))
+    sol <- solsList[[1]][[index]][[1]]
+    
+    amplitudes[j] <- max(sol[4,])
+
+  }
+
+  solDataFrame <- data.frame(time=times + 1.0 - times[1], y0=t(amplitudes))
+  solDataFrame$nu = as.factor(nu)
+  
+  print(amplitudes[1])
+  print(amplitudes[length(amplitudes)])
+
+  amplitudesPlot <- amplitudesPlot + geom_path(data=solDataFrame, aes(time, y0, color=nu), size=0.75)
+}
+
+amplitudesPlot <- amplitudesPlot + 
+  xlab('Time') + ylab('$\\| y(S_0)\\|$') + 
+  scale_x_continuous(expand = c(0, 0), limits=c(-0.0, 2.05), breaks=c(0, 1, 2)) + 
+  # scale_y_continuous(expand = c(0, 0), limits=c(-0.05, 100.05)) + 
+  theme(legend.position="right", panel.background = element_blank(), axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), text=element_text(size=18), plot.title=element_text(size=21)) +
+  scale_colour_manual(values=colorRampPalette(brewer.pal(9, "BrBG"))(length(nuValues)))
+
+amplitudesPlot
+```
